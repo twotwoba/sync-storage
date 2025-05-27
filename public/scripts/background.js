@@ -1,8 +1,6 @@
 /**
- * @description: service worker for chrome extension
+ * core script for chrome extension
  */
-
-// 存储监听状态和配置信息
 let monitoringTabId = null
 let config = {
     monitorSource: '',
@@ -11,22 +9,7 @@ let config = {
     isRunning: false
 }
 
-// 构建URL匹配模式
-function buildUrlPattern(url) {
-    // 如果是localhost，使用http/https模式
-    if (url.startsWith('localhost:')) {
-        return [`http://${url}/*`, `http://${url}/`, `https://${url}/*`, `https://${url}/`]
-    }
-    // 其他域名使用通配符模式
-    return [`*://${url}/*`]
-}
-
-// 监听安装事件
-chrome.runtime.onInstalled.addListener(() => {
-    console.log('Sync Storage Chrome Plugin installed')
-})
-
-// 监听来自popup的消息
+// message from popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     console.log('Sync Storage Chrome Plugin message received', request)
 
@@ -37,36 +20,31 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     } else if (request.type === 'STOP_MONITORING') {
         stopMonitoring()
         sendResponse({ success: true })
+    } else if (request.type === 'STORAGE_CHANGED') {
+        updateLocalStorage(request.key, request.value, config.monitorTarget)
+        sendResponse({ success: true })
     }
 
     return true
 })
 
-// 开始监听
+// start monitoring
 async function startMonitoring() {
-    // // 查找或创建目标tab
-    // const targetUrls = buildUrlPattern(config.monitorTarget)
-    // const targetTabs = await chrome.tabs.query({ url: targetUrls })
-    // let targetTab = targetTabs[0]
-    // if (!targetTab) {
-    //     targetTab = await chrome.tabs.create({ url: `http://${config.monitorTarget}` })
-    // }
-
-    // 查找源tab
-    const sourceUrls = buildUrlPattern(config.monitorSource)
-    const sourceTabs = await chrome.tabs.query({ url: sourceUrls })
+    // find source tab
+    const sourceUrl = `*://${config.monitorSource}/*`
+    const sourceTabs = await chrome.tabs.query({ url: sourceUrl })
     if (sourceTabs.length > 0) {
         monitoringTabId = sourceTabs[0].id
-        // 注入内容脚本来监听localStorage变化
+        // inject content script to monitor localStorage changes
         chrome.scripting.executeScript({
             target: { tabId: monitoringTabId },
             function: monitorLocalStorage,
-            args: [config.syncKeys]
+            args: [config.syncKeys, config.monitorTarget]
         })
     }
 }
 
-// 停止监听
+// stop monitoring
 function stopMonitoring() {
     if (monitoringTabId) {
         chrome.scripting.executeScript({
@@ -77,9 +55,22 @@ function stopMonitoring() {
     }
 }
 
-// 在页面中执行的监听函数
-function monitorLocalStorage(keys) {
-    window._storageListener = (e) => {
+// monitor function in page
+function monitorLocalStorage(keys, monitorTarget) {
+    // sync existing values
+    keys.forEach((key) => {
+        const value = localStorage.getItem(key)
+        if (value) {
+            chrome.runtime.sendMessage({
+                type: 'STORAGE_CHANGED',
+                key: key,
+                value: value
+            })
+        }
+    })
+
+    // monitor changes
+    window._storageListener = async (e) => {
         if (keys.includes(e.key)) {
             chrome.runtime.sendMessage({
                 type: 'STORAGE_CHANGED',
@@ -91,10 +82,38 @@ function monitorLocalStorage(keys) {
     window.addEventListener('storage', window._storageListener)
 }
 
-// 停止监听的函数
+// stop monitoring function
 function stopLocalStorageMonitoring() {
     if (window._storageListener) {
         window.removeEventListener('storage', window._storageListener)
         window._storageListener = null
     }
+}
+
+/**
+ * @description update target tab's localStorage
+ * @param {string} key
+ * @param {string} value
+ * @param {string} monitorTarget
+ */
+function updateLocalStorage(key, value, monitorTarget) {
+    /** special for localhost */
+    let targetUrl = []
+    if (monitorTarget.startsWith('localhost')) {
+        targetUrl = [`http://${monitorTarget}/*`, `https://${monitorTarget}/*`]
+    } else {
+        targetUrl = [`*://${monitorTarget}/*`]
+    }
+
+    chrome.tabs.query({ url: targetUrl }, (tabs) => {
+        if (tabs.length > 0) {
+            chrome.scripting.executeScript({
+                target: { tabId: tabs[0].id },
+                func: (key, value) => {
+                    localStorage.setItem(key, value)
+                },
+                args: [key, value]
+            })
+        }
+    })
 }

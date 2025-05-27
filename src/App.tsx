@@ -6,17 +6,6 @@ import { Input } from './components/ui/input'
 import { Label } from './components/ui/label'
 import { Textarea } from './components/ui/textarea'
 import { Loader2 } from 'lucide-react'
-import { useEffect } from 'react'
-
-// 构建URL匹配模式
-function buildUrlPattern(url: string) {
-    // 如果是localhost，使用http/https模式
-    if (url.startsWith('localhost:')) {
-        return [`http://${url}/*`, `http://${url}`, `https://${url}/*`, `https://${url}`]
-    }
-    // 其他域名使用通配符模式
-    return [`*://${url}/*`, `*://${url}`]
-}
 
 function App() {
     const [is_running, setIsRunning] = useLocalStorage('is_running', false)
@@ -50,33 +39,6 @@ function App() {
             console.error('Failed to toggle monitoring:', error)
         }
     }
-
-    // 监听来自background的消息
-    useEffect(() => {
-        const messageListener = (message: any) => {
-            console.log('🔥 [DEBUG] messageListener --->', message)
-            if (message.type === 'STORAGE_CHANGED') {
-                // 当监听到storage变化时，更新目标页面的localStorage
-                const targetUrls = buildUrlPattern(monitor_target)
-                chrome.tabs.query({ url: targetUrls }, (tabs) => {
-                    if (tabs.length > 0) {
-                        chrome.scripting.executeScript({
-                            target: { tabId: tabs[0].id! },
-                            func: (key: string, value: string) => {
-                                localStorage.setItem(key, value)
-                            },
-                            args: [message.key, message.value]
-                        })
-                    }
-                })
-            }
-        }
-
-        chrome.runtime.onMessage.addListener(messageListener)
-        return () => {
-            chrome.runtime.onMessage.removeListener(messageListener)
-        }
-    }, [monitor_target])
 
     return (
         <div className="w-full px-4 py-2">
