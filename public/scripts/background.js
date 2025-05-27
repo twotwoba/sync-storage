@@ -32,12 +32,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     // when page is loaded, and the page is being monitored
     if (changeInfo.status === 'complete' && tabId === monitoringTabId && config.isRunning) {
-        // inject content script to monitor localStorage changes
-        chrome.scripting.executeScript({
-            target: { tabId: monitoringTabId },
-            function: monitorLocalStorage,
-            args: [config.syncKeys, config.monitorTarget]
-        })
+        injectMonitorScript(tabId)
     }
 })
 
@@ -46,16 +41,39 @@ async function startMonitoring() {
     // find source tab
     const sourceUrl = `*://${config.monitorSource}/*`
     const sourceTabs = await chrome.tabs.query({ url: sourceUrl })
+
     if (sourceTabs.length > 0) {
+        // if source tab is existed, use it
         monitoringTabId = sourceTabs[0].id
         config.isRunning = true
-        // inject content script to monitor localStorage changes
-        chrome.scripting.executeScript({
-            target: { tabId: monitoringTabId },
-            function: monitorLocalStorage,
-            args: [config.syncKeys, config.monitorTarget]
-        })
+        injectMonitorScript(monitoringTabId)
+    } else {
+        // if source tab is not existed, create new tab
+        try {
+            // build full url
+            let fullUrl = config.monitorSource.startsWith('localhost')
+                ? `http://${config.monitorSource}`
+                : `https://${config.monitorSource}`
+
+            const newTab = await chrome.tabs.create({ url: fullUrl })
+            monitoringTabId = newTab.id
+            config.isRunning = true
+            // ! warning: no need to inject script here, it will be injected automatically when page is loaded
+        } catch (error) {
+            console.error('Failed to create new tab:', error)
+            config.isRunning = false
+            monitoringTabId = null
+        }
     }
+}
+
+// inject content script to monitor localStorage changes
+function injectMonitorScript(tabId) {
+    chrome.scripting.executeScript({
+        target: { tabId },
+        function: monitorLocalStorage,
+        args: [config.syncKeys, config.monitorTarget]
+    })
 }
 
 // stop monitoring
