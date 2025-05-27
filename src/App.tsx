@@ -44,7 +44,7 @@ function App() {
         <div className="w-full px-4 py-2">
             <div className="flex justify-center gap-2">
                 <div className="flex-1">
-                    <Label>获取地址</Label>
+                    <Label>Source Url</Label>
                     <Input
                         type="text"
                         className="w-full"
@@ -54,7 +54,7 @@ function App() {
                     />
                 </div>
                 <div className="flex-1">
-                    <Label>接收地址</Label>
+                    <Label>Target Url</Label>
                     <Input
                         type="text"
                         className="w-full"
@@ -65,7 +65,7 @@ function App() {
                 </div>
             </div>
             <div>
-                <Label>需同步keys</Label>
+                <Label>Sync Keys</Label>
                 <Textarea
                     placeholder="Input sync keys, one per line"
                     value={sync_keys.join('\n')}
@@ -78,7 +78,7 @@ function App() {
                 onClick={handleToggleMonitoring}
                 disabled={!monitor_source || !monitor_target || sync_keys.length === 0}>
                 {is_running && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {is_running ? '停止监听' : '启动监听'}
+                {is_running ? 'Stop' : 'Sync'}
             </Button>
         </div>
     )
