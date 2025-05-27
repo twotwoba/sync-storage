@@ -28,6 +28,19 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true
 })
 
+// if tab is updated, inject content script to monitor localStorage changes
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    // when page is loaded, and the page is being monitored
+    if (changeInfo.status === 'complete' && tabId === monitoringTabId && config.isRunning) {
+        // inject content script to monitor localStorage changes
+        chrome.scripting.executeScript({
+            target: { tabId: monitoringTabId },
+            function: monitorLocalStorage,
+            args: [config.syncKeys, config.monitorTarget]
+        })
+    }
+})
+
 // start monitoring
 async function startMonitoring() {
     // find source tab
@@ -35,6 +48,7 @@ async function startMonitoring() {
     const sourceTabs = await chrome.tabs.query({ url: sourceUrl })
     if (sourceTabs.length > 0) {
         monitoringTabId = sourceTabs[0].id
+        config.isRunning = true
         // inject content script to monitor localStorage changes
         chrome.scripting.executeScript({
             target: { tabId: monitoringTabId },
@@ -52,6 +66,7 @@ function stopMonitoring() {
             function: stopLocalStorageMonitoring
         })
         monitoringTabId = null
+        config.isRunning = false
     }
 }
 
