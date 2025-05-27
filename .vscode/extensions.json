@@ -1,0 +1,9 @@
+{
+    /* prettier-ignore */
+    "recommendations": [
+        "bradlc.vscode-tailwindcss",
+        "esbenp.prettier-vscode",
+        "dbaeumer.vscode-eslint",
+        "stylelint.vscode-stylelint"
+    ]
+}

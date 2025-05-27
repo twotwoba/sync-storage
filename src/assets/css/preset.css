@@ -1,0 +1,10 @@
+html {
+    /* 若设置 font-size: 62.5%; 则 1rem = 10px */
+    font-size: 16px;
+}
+
+#sync-storage-chrome-plugin-0228 {
+    width: 600px;
+    height: 500px;
+    overflow-x: hidden;
+}
