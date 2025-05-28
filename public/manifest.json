@@ -1,6 +1,6 @@
 {
     "manifest_version": 3,
-    "name": "Sync Storage Chrome Plugin",
+    "name": "Sync Storage",
     "version": "0.0.1",
     "description": "Sync Storage Chrome Extension",
     "permissions": ["storage", "tabs", "scripting", "activeTab"],
