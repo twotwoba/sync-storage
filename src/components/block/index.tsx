@@ -87,13 +87,6 @@ function Pannel(props: PannelProps) {
                 </div>
                 <div className="flex-1">
                     <Label>Target</Label>
-                    {/* <Input
-                        type="text"
-                        className="w-full"
-                        placeholder="Example: localhost:8080"
-                        value={monitor_target}
-                        onChange={(e) => setMonitorTarget(e.target.value)}
-                    /> */}
                     <div className="flex rounded-lg shadow-sm shadow-black/5">
                         <div className="relative">
                             <select

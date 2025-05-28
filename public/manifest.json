@@ -17,12 +17,5 @@
     "action": {
         "default_icon": "images/icon-48.png",
         "default_popup": "index.html"
-    },
-    "content_scripts": [
-        {
-            "matches": ["<all_urls>"],
-            "css": ["static/index.css"],
-            "js": ["static/index.js"]
-        }
-    ]
+    }
 }
