@@ -8,4 +8,4 @@ When you need to synchronize the unique identifier stored in the storage of the 
 
 ## Preconditions
 
-Before Listening target url, open it.(There is no such restriction in the source URL.)
+Before Listening target url, open it.(There is no such restriction in the source URL.) Otherwise, you need to manual sync data by reclick the `Sync Button`.
