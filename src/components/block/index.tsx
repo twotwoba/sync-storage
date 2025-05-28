@@ -5,7 +5,7 @@ import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import { Textarea } from '../ui/textarea'
-import { CircleMinus, CirclePlus, Loader2 } from 'lucide-react'
+import { ChevronDown, CircleMinus, CirclePlus, Loader2 } from 'lucide-react'
 
 interface PannelProps {
     index: number | string
@@ -20,12 +20,16 @@ function Pannel(props: PannelProps) {
     const MONITOR_TARGET_KEY = `monitor_target_${index}`
     const MONITOR_SOURCE_KEY = `monitor_source_${index}`
     const SYNC_KEYS_KEY = `sync_keys_${index}`
+    const SOURCE_PROTOCOL_KEY = `source_protocol_${index}`
+    const TARGET_PROTOCOL_KEY = `target_protocol_${index}`
     const [is_running, setIsRunning] = useLocalStorage(RUNNING_KEY, false)
     const [monitor_target, setMonitorTarget] = useLocalStorage(MONITOR_TARGET_KEY, '')
     const [monitor_source, setMonitorSource] = useLocalStorage(MONITOR_SOURCE_KEY, '')
     const [sync_keys, setSyncKeys] = useLocalStorage<string[]>(SYNC_KEYS_KEY, [])
+    const [source_protocol, setSourceProtocol] = useLocalStorage(SOURCE_PROTOCOL_KEY, 'http://')
+    const [target_protocol, setTargetProtocol] = useLocalStorage(TARGET_PROTOCOL_KEY, 'http://')
 
-    // 处理启动/停止监听
+    // switch monitoring
     const handleToggleMonitoring = async () => {
         try {
             const newState = !is_running
@@ -35,6 +39,8 @@ function Pannel(props: PannelProps) {
                     config: {
                         monitorSource: monitor_source,
                         monitorTarget: monitor_target,
+                        sourceProtocol: source_protocol,
+                        targetProtocol: target_protocol,
                         syncKeys: sync_keys,
                         isRunning: true
                     }
@@ -55,23 +61,60 @@ function Pannel(props: PannelProps) {
             <div className="flex justify-center gap-2">
                 <div className="flex-1">
                     <Label>Source</Label>
-                    <Input
-                        type="text"
-                        className="w-full"
-                        placeholder="Example: www.google.com"
-                        value={monitor_source}
-                        onChange={(e) => setMonitorSource(e.target.value)}
-                    />
+                    <div className="flex rounded-lg shadow-sm shadow-black/5">
+                        <div className="relative">
+                            <select
+                                value={source_protocol}
+                                onChange={(e) => setSourceProtocol(e.target.value)}
+                                className="peer border-input bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:border-ring focus-visible:text-foreground focus-visible:ring-ring/20 inline-flex h-full appearance-none items-center rounded-none rounded-s-lg border ps-3 pe-8 text-sm transition-shadow focus:z-10 focus-visible:ring-[3px] focus-visible:outline-none disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
+                                aria-label="Protocol">
+                                <option value="http://">http://</option>
+                                <option value="https://">https://</option>
+                            </select>
+                            <span className="text-muted-foreground/80 pointer-events-none absolute inset-y-0 end-0 z-10 flex h-full w-9 items-center justify-center peer-disabled:opacity-50">
+                                <ChevronDown size={16} strokeWidth={2} aria-hidden="true" role="img" />
+                            </span>
+                        </div>
+                        <Input
+                            className="-ms-px rounded-s-none shadow-none focus-visible:z-10"
+                            placeholder="dev-manage.baidu.com"
+                            type="text"
+                            value={monitor_source}
+                            onChange={(e) => setMonitorSource(e.target.value)}
+                        />
+                    </div>
                 </div>
                 <div className="flex-1">
                     <Label>Target</Label>
-                    <Input
+                    {/* <Input
                         type="text"
                         className="w-full"
                         placeholder="Example: localhost:8080"
                         value={monitor_target}
                         onChange={(e) => setMonitorTarget(e.target.value)}
-                    />
+                    /> */}
+                    <div className="flex rounded-lg shadow-sm shadow-black/5">
+                        <div className="relative">
+                            <select
+                                value={target_protocol}
+                                onChange={(e) => setTargetProtocol(e.target.value)}
+                                className="peer border-input bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:border-ring focus-visible:text-foreground focus-visible:ring-ring/20 inline-flex h-full appearance-none items-center rounded-none rounded-s-lg border ps-3 pe-8 text-sm transition-shadow focus:z-10 focus-visible:ring-[3px] focus-visible:outline-none disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
+                                aria-label="Protocol">
+                                <option value="http://">http://</option>
+                                <option value="https://">https://</option>
+                            </select>
+                            <span className="text-muted-foreground/80 pointer-events-none absolute inset-y-0 end-0 z-10 flex h-full w-9 items-center justify-center peer-disabled:opacity-50">
+                                <ChevronDown size={16} strokeWidth={2} aria-hidden="true" role="img" />
+                            </span>
+                        </div>
+                        <Input
+                            className="-ms-px rounded-s-none shadow-none focus-visible:z-10"
+                            placeholder="dev-manage.baidu.com"
+                            type="text"
+                            value={monitor_target}
+                            onChange={(e) => setMonitorTarget(e.target.value)}
+                        />
+                    </div>
                 </div>
             </div>
             <div>

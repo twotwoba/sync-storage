@@ -5,6 +5,8 @@ let monitoringTabId = null
 let config = {
     monitorSource: '',
     monitorTarget: '',
+    sourceProtocol: '',
+    targetProtocol: '',
     syncKeys: [],
     isRunning: false
 }
@@ -21,7 +23,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         stopMonitoring()
         sendResponse({ success: true })
     } else if (request.type === 'STORAGE_CHANGED') {
-        updateLocalStorage(request.key, request.value, config.monitorTarget)
+        updateLocalStorage(request.key, request.value, config.monitorTarget, config.targetProtocol)
         sendResponse({ success: true })
     }
 
@@ -39,7 +41,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 // start monitoring
 async function startMonitoring() {
     // find source tab
-    const sourceUrl = `*://${config.monitorSource}/*`
+    const sourceUrl = `${config.sourceProtocol}${config.monitorSource}/*`
     const sourceTabs = await chrome.tabs.query({ url: sourceUrl })
 
     if (sourceTabs.length > 0) {
@@ -50,12 +52,8 @@ async function startMonitoring() {
     } else {
         // if source tab is not existed, create new tab
         try {
-            // build full url
-            let fullUrl = config.monitorSource.startsWith('localhost')
-                ? `http://${config.monitorSource}`
-                : `https://${config.monitorSource}`
-
-            const newTab = await chrome.tabs.create({ url: fullUrl })
+            const newTabUrl = `${config.sourceProtocol}${config.monitorSource}`
+            const newTab = await chrome.tabs.create({ url: newTabUrl })
             monitoringTabId = newTab.id
             config.isRunning = true
             // ! warning: no need to inject script here, it will be injected automatically when page is loaded
@@ -72,7 +70,7 @@ function injectMonitorScript(tabId) {
     chrome.scripting.executeScript({
         target: { tabId },
         function: monitorLocalStorage,
-        args: [config.syncKeys, config.monitorTarget]
+        args: [config.syncKeys]
     })
 }
 
@@ -89,7 +87,7 @@ function stopMonitoring() {
 }
 
 // monitor function in page
-function monitorLocalStorage(keys, monitorTarget) {
+function monitorLocalStorage(keys) {
     // sync existing values
     keys.forEach((key) => {
         const value = localStorage.getItem(key)
@@ -128,16 +126,10 @@ function stopLocalStorageMonitoring() {
  * @param {string} key
  * @param {string} value
  * @param {string} monitorTarget
+ * @param {string} targetProtocol
  */
-function updateLocalStorage(key, value, monitorTarget) {
-    /** special for localhost */
-    let targetUrl = []
-    if (monitorTarget.startsWith('localhost')) {
-        targetUrl = [`http://${monitorTarget}/*`, `https://${monitorTarget}/*`]
-    } else {
-        targetUrl = [`*://${monitorTarget}/*`]
-    }
-
+function updateLocalStorage(key, value, monitorTarget, targetProtocol) {
+    const targetUrl = `${targetProtocol}${monitorTarget}/*`
     chrome.tabs.query({ url: targetUrl }, (tabs) => {
         if (tabs.length > 0) {
             chrome.scripting.executeScript({
