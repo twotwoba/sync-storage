@@ -23,7 +23,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         stopMonitoring()
         sendResponse({ success: true })
     } else if (request.type === 'STORAGE_CHANGED') {
-        updateLocalStorage(request.key, request.value, config.monitorTarget, config.targetProtocol)
+        updateLocalStorage(request.key, request.value, request.cookieValue, config.monitorTarget, config.targetProtocol)
         sendResponse({ success: true })
     }
 
@@ -89,13 +89,17 @@ function stopMonitoring() {
 // monitor function in page
 function monitorLocalStorage(keys) {
     // sync existing values
-    keys.forEach((key) => {
+    keys.forEach(async (key) => {
         const value = localStorage.getItem(key)
-        if (value) {
+        const cookie = document.cookie.split('; ').find((row) => row.startsWith(key + '='))
+        const cookieValue = cookie ? cookie.split('=')[1] : null
+
+        if (value || cookieValue) {
             chrome.runtime.sendMessage({
                 type: 'STORAGE_CHANGED',
                 key: key,
-                value: value
+                value: value,
+                cookieValue: cookieValue
             })
         }
     })
@@ -103,10 +107,14 @@ function monitorLocalStorage(keys) {
     // monitor changes
     window._storageListener = async (e) => {
         if (keys.includes(e.key)) {
+            const cookie = document.cookie.split('; ').find((row) => row.startsWith(e.key))
+            const cookieValue = cookie ? cookie.split('=')[1] : null
+
             chrome.runtime.sendMessage({
                 type: 'STORAGE_CHANGED',
                 key: e.key,
-                value: e.newValue
+                value: e.newValue,
+                cookieValue: cookieValue
             })
         }
     }
@@ -122,22 +130,32 @@ function stopLocalStorageMonitoring() {
 }
 
 /**
- * @description update target tab's localStorage
+ * @description update target tab's localStorage and cookies
  * @param {string} key
  * @param {string} value
+ * @param {string} cookieValue
  * @param {string} monitorTarget
  * @param {string} targetProtocol
  */
-function updateLocalStorage(key, value, monitorTarget, targetProtocol) {
+function updateLocalStorage(key, value, cookieValue, monitorTarget, targetProtocol) {
     const targetUrl = `${targetProtocol}${monitorTarget}/*`
     chrome.tabs.query({ url: targetUrl }, (tabs) => {
         if (tabs.length > 0) {
+            // 更新 localStorage
             chrome.scripting.executeScript({
                 target: { tabId: tabs[0].id },
-                func: (key, value) => {
-                    localStorage.setItem(key, value)
+                func: (key, value, cookieValue) => {
+                    // 更新 localStorage
+                    if (value) {
+                        localStorage.setItem(key, value)
+                    }
+
+                    // 更新 cookie
+                    if (cookieValue) {
+                        document.cookie = `${key}=${cookieValue}; path=/`
+                    }
                 },
-                args: [key, value]
+                args: [key, value, cookieValue]
             })
         }
     })
