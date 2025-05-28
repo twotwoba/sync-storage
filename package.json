@@ -3,7 +3,9 @@
     "private": true,
     "version": "0.0.1",
     "type": "module",
-    "description": "Sync Storage Chrome Extension",
+    "description": "Sync Storage Chrome Extension. 同步谷歌浏览器不同tab间的localStorage数据",
+    "author": "EricYuan",
+    "homepage_url": "https://github.com/twotwoba/sync-storage",
     "scripts": {
         "dev": "vite",
         "build": "tsc -b && vite build",
