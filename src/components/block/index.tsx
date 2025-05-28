@@ -6,6 +6,7 @@ import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import { Textarea } from '../ui/textarea'
 import { ChevronDown, CircleMinus, CirclePlus, Loader2 } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
 
 interface PannelProps {
     index: number | string
@@ -140,13 +141,22 @@ function Pannel(props: PannelProps) {
                     )}
                 </div>
                 <div>
-                    <Button
-                        className="ml-2"
-                        onClick={handleToggleMonitoring}
-                        disabled={!monitor_source || !monitor_target || sync_keys.length === 0}>
-                        {is_running && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        {is_running ? 'Stop' : 'Sync'}
-                    </Button>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger>
+                                <Button
+                                    className="ml-2"
+                                    onClick={handleToggleMonitoring}
+                                    disabled={!monitor_source || !monitor_target || sync_keys.length === 0}>
+                                    {is_running && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    {is_running ? 'Stop' : 'Sync'}
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>Make sure you've already open the Target tab</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
                 </div>
             </div>
         </div>
