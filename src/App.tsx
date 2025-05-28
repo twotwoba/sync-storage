@@ -1,86 +1,30 @@
 /// <reference types="chrome"/>
 
 import { useLocalStorage } from '@uidotdev/usehooks'
-import { Button } from './components/ui/button'
-import { Input } from './components/ui/input'
-import { Label } from './components/ui/label'
-import { Textarea } from './components/ui/textarea'
-import { Loader2 } from 'lucide-react'
+import Block from './components/block'
 
 function App() {
-    const [is_running, setIsRunning] = useLocalStorage('is_running', false)
-    const [monitor_target, setMonitorTarget] = useLocalStorage('monitor_target', '')
-    const [monitor_source, setMonitorSource] = useLocalStorage('monitor_source', '')
-    const [sync_keys, setSyncKeys] = useLocalStorage<string[]>('sync_keys', [])
+    const [blocks, setBlocks] = useLocalStorage('blocks', 1)
 
-    // 处理启动/停止监听
-    const handleToggleMonitoring = async () => {
-        try {
-            const newState = !is_running
-            if (newState) {
-                // 启动监听
-                await chrome.runtime.sendMessage({
-                    type: 'START_MONITORING',
-                    config: {
-                        monitorSource: monitor_source,
-                        monitorTarget: monitor_target,
-                        syncKeys: sync_keys,
-                        isRunning: true
-                    }
-                })
-            } else {
-                // 停止监听
-                await chrome.runtime.sendMessage({
-                    type: 'STOP_MONITORING'
-                })
-            }
-            setIsRunning(newState)
-        } catch (error) {
-            console.error('Failed to toggle monitoring:', error)
-        }
+    const handleAddBlock = () => {
+        setBlocks(blocks + 1)
     }
 
+    const handleRemoveBlock = () => {
+        setBlocks(blocks - 1)
+    }
     return (
-        <div className="w-full px-4 py-2">
-            <div className="flex justify-center gap-2">
-                <div className="flex-1">
-                    <Label>Source Url</Label>
-                    <Input
-                        type="text"
-                        className="w-full"
-                        placeholder="Example: www.google.com"
-                        value={monitor_source}
-                        onChange={(e) => setMonitorSource(e.target.value)}
-                    />
-                </div>
-                <div className="flex-1">
-                    <Label>Target Url</Label>
-                    <Input
-                        type="text"
-                        className="w-full"
-                        placeholder="Example: localhost:8080"
-                        value={monitor_target}
-                        onChange={(e) => setMonitorTarget(e.target.value)}
-                    />
-                </div>
-            </div>
-            <div>
-                <Label>Sync Keys</Label>
-                <Textarea
-                    placeholder="Input sync keys, one per line"
-                    value={sync_keys.join('\n')}
-                    onChange={(e) => setSyncKeys(e.target.value.split('\n').filter(Boolean))}
+        <>
+            {Array.from({ length: blocks }).map((_, index) => (
+                <Block
+                    key={index}
+                    index={index + 1}
+                    total={blocks}
+                    addBlock={handleAddBlock}
+                    removeBlock={handleRemoveBlock}
                 />
-            </div>
-
-            <Button
-                className="mt-4"
-                onClick={handleToggleMonitoring}
-                disabled={!monitor_source || !monitor_target || sync_keys.length === 0}>
-                {is_running && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {is_running ? 'Stop' : 'Sync'}
-            </Button>
-        </div>
+            ))}
+        </>
     )
 }
 
