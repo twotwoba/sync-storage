@@ -8,14 +8,14 @@ import { Textarea } from '../ui/textarea'
 import { ChevronDown, CircleMinus, CirclePlus, Loader2 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
 
-interface PannelProps {
+interface BlockProps {
     index: number | string
     total: number
     addBlock: () => void
     removeBlock: () => void
 }
 
-function Pannel(props: PannelProps) {
+function Block(props: BlockProps) {
     const { index, total, addBlock, removeBlock } = props
     const RUNNING_KEY = `is_running_${index}`
     const MONITOR_TARGET_KEY = `monitor_target_${index}`
@@ -156,4 +156,4 @@ function Pannel(props: PannelProps) {
     )
 }
 
-export default Pannel
+export default Block
