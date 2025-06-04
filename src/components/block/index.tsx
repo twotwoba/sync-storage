@@ -58,7 +58,7 @@ function Block(props: BlockProps) {
     }
 
     return (
-        <div className="w-full px-4 py-2">
+        <div className="z-10 w-full px-4 py-2">
             <div className="flex justify-center gap-2">
                 <div className="flex-1">
                     <Label>Source</Label>
