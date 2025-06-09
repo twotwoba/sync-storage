@@ -7,6 +7,7 @@ import { Label } from '../ui/label'
 import { Textarea } from '../ui/textarea'
 import { ChevronDown, CircleMinus, CirclePlus, Loader2 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
+import { useEffect } from 'react'
 
 interface BlockProps {
     index: number | string
@@ -34,6 +35,7 @@ function Block(props: BlockProps) {
     const handleToggleMonitoring = async () => {
         try {
             const newState = !is_running
+            setIsRunning(newState)
             if (newState) {
                 await chrome.runtime.sendMessage({
                     type: 'START_MONITORING',
@@ -42,8 +44,7 @@ function Block(props: BlockProps) {
                         monitorTarget: monitor_target,
                         sourceProtocol: source_protocol,
                         targetProtocol: target_protocol,
-                        syncKeys: sync_keys,
-                        isRunning: true
+                        syncKeys: sync_keys
                     }
                 })
             } else {
@@ -51,11 +52,25 @@ function Block(props: BlockProps) {
                     type: 'STOP_MONITORING'
                 })
             }
-            setIsRunning(newState)
         } catch (error) {
             console.error('Failed to toggle monitoring:', error)
         }
     }
+
+    useEffect(() => {
+        const handleMessage = (request: { type: string }, _sender: any, _sendResponse: (...args: any) => void) => {
+            if (request.type === 'STORAGE_CHANGED_SUCCESS') {
+                setIsRunning(false)
+            }
+        }
+
+        chrome.runtime.onMessage.removeListener(handleMessage)
+        chrome.runtime.onMessage.addListener(handleMessage)
+
+        return () => {
+            chrome.runtime.onMessage.removeListener(handleMessage)
+        }
+    }, [])
 
     return (
         <div className="z-10 w-full px-4 py-2">

@@ -7,8 +7,7 @@ let config = {
     monitorTarget: '',
     sourceProtocol: '',
     targetProtocol: '',
-    syncKeys: '',
-    isRunning: false
+    syncKeys: ''
 }
 
 // message from popup
@@ -18,26 +17,25 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.type === 'START_MONITORING') {
         config = request.config
         startMonitoring()
-        sendResponse({ success: true })
     } else if (request.type === 'STOP_MONITORING') {
         stopMonitoring()
-        sendResponse({ success: true })
     } else if (request.type === 'STORAGE_CHANGED') {
         updateLocalStorage(request.key, request.value, request.cookieValue, config.monitorTarget, config.targetProtocol)
-        sendResponse({ success: true })
+        stopMonitoring()
+        chrome.runtime.sendMessage({
+            type: 'STORAGE_CHANGED_SUCCESS'
+        })
     }
-
-    return true
+    return true // keep the message channel open for sendResponse
 })
 
 // if tab is updated, inject content script to monitor localStorage changes
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     // when page is loaded, and the page is being monitored
-    if (changeInfo.status === 'complete' && tabId === monitoringTabId && config.isRunning) {
+    if (changeInfo.status === 'complete' && tabId === monitoringTabId) {
         injectMonitorScript(tabId)
     }
 })
-
 // start monitoring
 async function startMonitoring() {
     // find source tab
@@ -47,7 +45,6 @@ async function startMonitoring() {
     if (sourceTabs.length > 0) {
         // if source tab is existed, use it
         monitoringTabId = sourceTabs[0].id
-        config.isRunning = true
         injectMonitorScript(monitoringTabId)
     } else {
         // if source tab is not existed, create new tab
@@ -55,16 +52,13 @@ async function startMonitoring() {
             const newTabUrl = `${config.sourceProtocol}${config.monitorSource}`
             const newTab = await chrome.tabs.create({ url: newTabUrl })
             monitoringTabId = newTab.id
-            config.isRunning = true
             // ! warning: no need to inject script here, it will be injected automatically when page is loaded
         } catch (error) {
             console.error('Failed to create new tab:', error)
-            config.isRunning = false
             monitoringTabId = null
         }
     }
 }
-
 // inject content script to monitor localStorage changes
 function injectMonitorScript(tabId) {
     chrome.scripting.executeScript({
@@ -73,19 +67,6 @@ function injectMonitorScript(tabId) {
         args: [config.syncKeys.split('\n').map((key) => key.trim())]
     })
 }
-
-// stop monitoring
-function stopMonitoring() {
-    if (monitoringTabId) {
-        chrome.scripting.executeScript({
-            target: { tabId: monitoringTabId },
-            function: stopLocalStorageMonitoring
-        })
-        monitoringTabId = null
-        config.isRunning = false
-    }
-}
-
 // monitor function in page
 function monitorLocalStorage(keys) {
     // sync existing values
@@ -121,6 +102,16 @@ function monitorLocalStorage(keys) {
     window.addEventListener('storage', window._storageListener)
 }
 
+// stop monitoring
+function stopMonitoring() {
+    if (monitoringTabId) {
+        chrome.scripting.executeScript({
+            target: { tabId: monitoringTabId },
+            function: stopLocalStorageMonitoring
+        })
+        monitoringTabId = null
+    }
+}
 // stop monitoring function
 function stopLocalStorageMonitoring() {
     if (window._storageListener) {
