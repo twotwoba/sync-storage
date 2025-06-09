@@ -7,7 +7,7 @@ let config = {
     monitorTarget: '',
     sourceProtocol: '',
     targetProtocol: '',
-    syncKeys: [],
+    syncKeys: '',
     isRunning: false
 }
 
@@ -70,7 +70,7 @@ function injectMonitorScript(tabId) {
     chrome.scripting.executeScript({
         target: { tabId },
         function: monitorLocalStorage,
-        args: [config.syncKeys]
+        args: [config.syncKeys.split('\n').map((key) => key.trim())]
     })
 }
 

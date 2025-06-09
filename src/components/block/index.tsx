@@ -26,7 +26,7 @@ function Block(props: BlockProps) {
     const [is_running, setIsRunning] = useLocalStorage(RUNNING_KEY, false)
     const [monitor_target, setMonitorTarget] = useLocalStorage(MONITOR_TARGET_KEY, '')
     const [monitor_source, setMonitorSource] = useLocalStorage(MONITOR_SOURCE_KEY, '')
-    const [sync_keys, setSyncKeys] = useLocalStorage<string[]>(SYNC_KEYS_KEY, [])
+    const [sync_keys, setSyncKeys] = useLocalStorage<string>(SYNC_KEYS_KEY, '')
     const [source_protocol, setSourceProtocol] = useLocalStorage(SOURCE_PROTOCOL_KEY, 'http://')
     const [target_protocol, setTargetProtocol] = useLocalStorage(TARGET_PROTOCOL_KEY, 'http://')
 
@@ -115,20 +115,20 @@ function Block(props: BlockProps) {
                 <Label>Keys</Label>
                 <Textarea
                     placeholder="Input sync keys, one per line"
-                    value={sync_keys.join('\n')}
-                    onChange={(e) => setSyncKeys(e.target.value.split('\n').filter(Boolean))}
+                    value={sync_keys}
+                    onChange={(e) => setSyncKeys(e.target.value)}
                 />
             </div>
 
             <div className="mt-4 flex justify-between">
                 <div>
                     {index === total && (
-                        <Button className="mr-2" onClick={addBlock}>
+                        <Button className="mr-2 rounded-full" onClick={addBlock}>
                             <CirclePlus />
                         </Button>
                     )}
                     {total > 1 && (
-                        <Button onClick={removeBlock} disabled={is_running}>
+                        <Button className="rounded-full" onClick={removeBlock} disabled={is_running}>
                             <CircleMinus />
                         </Button>
                     )}
