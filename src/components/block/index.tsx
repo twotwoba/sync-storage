@@ -6,7 +6,6 @@ import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import { Textarea } from '../ui/textarea'
 import { ChevronDown, CircleMinus, Loader2 } from 'lucide-react'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
 import { useEffect } from 'react'
 
 interface BlockProps {
@@ -157,22 +156,13 @@ function Block(props: BlockProps) {
                             <CircleMinus />
                         </Button>
                     )}
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger>
-                                <Button
-                                    className="mt-[30px] ml-2 h-[64px] bg-orange-300 hover:bg-orange-400"
-                                    onClick={handleToggleMonitoring}
-                                    disabled={!monitor_source || !monitor_target || sync_keys.length === 0}>
-                                    {is_running && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    {is_running ? 'Stop' : 'Sync'}
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                <p>Make sure you've already open the Target tab</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
+                    <Button
+                        className="mt-[30px] ml-2 h-[64px] bg-orange-300 hover:bg-orange-400"
+                        onClick={handleToggleMonitoring}
+                        disabled={!monitor_source || !monitor_target || sync_keys.length === 0}>
+                        {is_running && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {is_running ? 'Stop' : 'Sync'}
+                    </Button>
                 </div>
             </div>
         </div>
