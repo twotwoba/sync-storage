@@ -5,25 +5,26 @@ import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import { Textarea } from '../ui/textarea'
-import { ChevronDown, CircleMinus, CirclePlus, Loader2 } from 'lucide-react'
+import { ChevronDown, CircleMinus, Loader2 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
 import { useEffect } from 'react'
 
 interface BlockProps {
-    index: number | string
+    id: number
+    index: number
     total: number
     addBlock: () => void
-    removeBlock: () => void
+    removeBlock: (index: number) => void
 }
 
 function Block(props: BlockProps) {
-    const { index, total, addBlock, removeBlock } = props
-    const RUNNING_KEY = `is_running_${index}`
-    const MONITOR_TARGET_KEY = `monitor_target_${index}`
-    const MONITOR_SOURCE_KEY = `monitor_source_${index}`
-    const SYNC_KEYS_KEY = `sync_keys_${index}`
-    const SOURCE_PROTOCOL_KEY = `source_protocol_${index}`
-    const TARGET_PROTOCOL_KEY = `target_protocol_${index}`
+    const { id, index, total, removeBlock } = props
+    const RUNNING_KEY = `is_running_${id}`
+    const MONITOR_TARGET_KEY = `monitor_target_${id}`
+    const MONITOR_SOURCE_KEY = `monitor_source_${id}`
+    const SYNC_KEYS_KEY = `sync_keys_${id}`
+    const SOURCE_PROTOCOL_KEY = `source_protocol_${id}`
+    const TARGET_PROTOCOL_KEY = `target_protocol_${id}`
     const [is_running, setIsRunning] = useLocalStorage(RUNNING_KEY, false)
     const [monitor_target, setMonitorTarget] = useLocalStorage(MONITOR_TARGET_KEY, '')
     const [monitor_source, setMonitorSource] = useLocalStorage(MONITOR_SOURCE_KEY, '')
@@ -57,6 +58,15 @@ function Block(props: BlockProps) {
         }
     }
 
+    const clearStorage = () => {
+        localStorage.removeItem(RUNNING_KEY)
+        localStorage.removeItem(MONITOR_TARGET_KEY)
+        localStorage.removeItem(MONITOR_SOURCE_KEY)
+        localStorage.removeItem(SYNC_KEYS_KEY)
+        localStorage.removeItem(SOURCE_PROTOCOL_KEY)
+        localStorage.removeItem(TARGET_PROTOCOL_KEY)
+    }
+
     useEffect(() => {
         const handleMessage = (request: { type: string }, _sender: any, _sendResponse: (...args: any) => void) => {
             if (request.type === 'STORAGE_CHANGED_SUCCESS') {
@@ -64,16 +74,16 @@ function Block(props: BlockProps) {
             }
         }
 
-        chrome.runtime.onMessage.removeListener(handleMessage)
-        chrome.runtime.onMessage.addListener(handleMessage)
+        chrome?.runtime?.onMessage?.removeListener(handleMessage)
+        chrome?.runtime?.onMessage?.addListener(handleMessage)
 
         return () => {
-            chrome.runtime.onMessage.removeListener(handleMessage)
+            chrome?.runtime?.onMessage?.removeListener(handleMessage)
         }
     }, [])
 
     return (
-        <div className="z-10 w-full px-4 py-2">
+        <div className="z-10 m-4 rounded-lg bg-white/50 px-4 py-2 shadow-lg shadow-black/5 backdrop-blur-md">
             <div className="flex justify-center gap-2">
                 <div className="flex-1">
                     <Label>Source</Label>
@@ -137,13 +147,14 @@ function Block(props: BlockProps) {
 
             <div className="mt-4 flex justify-between">
                 <div>
-                    {index === total && (
-                        <Button className="mr-2 rounded-full" onClick={addBlock}>
-                            <CirclePlus />
-                        </Button>
-                    )}
                     {total > 1 && (
-                        <Button className="rounded-full" onClick={removeBlock} disabled={is_running}>
+                        <Button
+                            className="rounded-full"
+                            onClick={() => {
+                                clearStorage()
+                                removeBlock(index)
+                            }}
+                            disabled={is_running}>
                             <CircleMinus />
                         </Button>
                     )}
