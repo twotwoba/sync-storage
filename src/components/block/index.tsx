@@ -136,20 +136,19 @@ function Block(props: BlockProps) {
                     </div>
                 </div>
             </div>
-            <div>
-                <Label>Keys</Label>
-                <Textarea
-                    placeholder="Input sync keys, one per line"
-                    value={sync_keys}
-                    onChange={(e) => setSyncKeys(e.target.value)}
-                />
-            </div>
-
-            <div className="mt-4 flex justify-between">
+            <div className="flex">
+                <div className="flex-1">
+                    <Label>Keys</Label>
+                    <Textarea
+                        placeholder="Input sync keys, one per line"
+                        value={sync_keys}
+                        onChange={(e) => setSyncKeys(e.target.value)}
+                    />
+                </div>
                 <div>
                     {total > 1 && (
                         <Button
-                            className="rounded-full"
+                            className="mt-[30px] ml-2 h-[64px] bg-gray-300 align-bottom hover:bg-gray-500"
                             onClick={() => {
                                 clearStorage()
                                 removeBlock(index)
@@ -158,13 +157,11 @@ function Block(props: BlockProps) {
                             <CircleMinus />
                         </Button>
                     )}
-                </div>
-                <div>
                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger>
                                 <Button
-                                    className="ml-2"
+                                    className="mt-[30px] ml-2 h-[64px] bg-orange-300 hover:bg-orange-400"
                                     onClick={handleToggleMonitoring}
                                     disabled={!monitor_source || !monitor_target || sync_keys.length === 0}>
                                     {is_running && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
