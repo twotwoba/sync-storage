@@ -22,9 +22,21 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     } else if (request.type === 'STORAGE_CHANGED') {
         updateLocalStorage(request.key, request.value, request.cookieValue, config.monitorTarget, config.targetProtocol)
         stopMonitoring()
-        chrome.runtime.sendMessage({
-            type: 'STORAGE_CHANGED_SUCCESS'
-        })
+        try {
+            chrome.runtime.sendMessage(
+                {
+                    type: 'STORAGE_CHANGED_SUCCESS'
+                },
+                (response) => {
+                    if (chrome.runtime.lastError) {
+                        // ingore error, cause plugin pannel is closed
+                        console.log('Message sending failed:', chrome.runtime.lastError.message)
+                    }
+                }
+            )
+        } catch (error) {
+            console.log('Error sending message:', error)
+        }
     }
     return true // keep the message channel open for sendResponse
 })
