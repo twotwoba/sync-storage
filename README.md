@@ -40,4 +40,4 @@ If your frontend project is part of a company system architecture with a unified
 
 ## License
 
-This repository is licensed under the [Apache-2.0 License](LICENSE)
+This repository is licensed under the [MIT](LICENSE)
