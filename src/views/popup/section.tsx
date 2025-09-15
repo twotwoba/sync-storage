@@ -56,7 +56,12 @@ const Section: FC<SectionItem> = ({ index, id, source, target, syncKeys, onChang
 	}
 	const handleSyncOnce = () => {
 		if (validate()) {
-			chrome.runtime.sendMessage({ type: "sync_once", payload: { source, target, keys: syncKeys } })
+			chrome.runtime.sendMessage(
+				{ type: "sync_once", payload: { source, target, keys: syncKeys } },
+				(response: boolean) => {
+					// TODO: has no keys in source
+				}
+			)
 		}
 	}
 	const handleSwitchSync = () => {
