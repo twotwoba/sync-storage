@@ -22,10 +22,10 @@ chrome.runtime.onInstalled.addListener(({ reason }) => {
 })
 
 /**
- * Tab 更新事件 - 检测 tab 打开和导航
+ * Tab updated event - detect tab open and navigation
  */
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-	// 只在页面加载完成时处理
+	// Only process when page load is complete
 	if (changeInfo.status !== "complete" || !tab.url) return
 
 	for (const [ruleId, rule] of activeRules) {
@@ -39,7 +39,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 })
 
 /**
- * Tab 关闭事件 - 清理状态
+ * Tab removed event - cleanup state
  */
 chrome.tabs.onRemoved.addListener((tabId) => {
 	for (const [ruleId, state] of observeStates) {
@@ -60,23 +60,19 @@ chrome.tabs.onRemoved.addListener((tabId) => {
  */
 chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
 	try {
-		// 立即同步
+		// Sync once
 		if (message.type === "sync_once") {
 			;(async () => {
 				const { source, target, keys } = message.payload
 				const sourceTabId = await checkWhetherTabExists(source)
 				const targetTabId = await checkWhetherTabExists(target)
 				const res = await injectSyncOnceScript(sourceTabId, targetTabId, keys)
-				if (res?.error) {
-					sendResponse(res)
-				} else {
-					sendResponse({ error: false, msg: "同步成功！" })
-				}
+				sendResponse(res)
 			})()
 			return true
 		}
 
-		// 开启监听
+		// Start observing
 		if (message.type === "sync_observe_start") {
 			const { id, source, target, keys } = message.payload
 			;(async () => {
@@ -87,29 +83,29 @@ chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
 					keys,
 					enabled: true
 				})
-				sendResponse({ error: false, msg: "监听已开启" })
+				sendResponse({ error: false, msgKey: "observeStarted" })
 			})()
 			return true
 		}
 
-		// 停止监听
+		// Stop observing
 		if (message.type === "sync_observe_stop") {
 			const { id } = message.payload
 			;(async () => {
 				await stopObserve(id)
-				sendResponse({ error: false, msg: "监听已停止" })
+				sendResponse({ error: false, msgKey: "observeStopped" })
 			})()
 			return true
 		}
 
-		// 源页面登录状态更新
+		// Source page login status update
 		if (message.type === "observe_source_status") {
 			const { ruleId, isReady } = message.payload
 			const state = observeStates.get(ruleId)
 			if (state) {
 				const wasReady = state.isSourceReady
 				state.isSourceReady = isReady
-				// 如果从未就绪变为就绪，尝试同步
+				// If changed from not ready to ready, try sync
 				if (!wasReady && isReady) {
 					console.log("[Observe] Source became ready for rule:", ruleId)
 					trySync(ruleId)
@@ -118,7 +114,7 @@ chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
 			return true
 		}
 
-		// 查询监听状态
+		// Query observe status
 		if (message.type === "sync_observe_status") {
 			const { id } = message.payload
 			const isActive = activeRules.has(id)

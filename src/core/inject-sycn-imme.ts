@@ -14,7 +14,7 @@ export async function injectSyncOnceScript(
 	const { localStorageData, cookieData } = res[0]?.result || {}
 
 	if (!Object.keys(localStorageData || {}).length) {
-		return { error: true, msg: "同步失败，请检查「同步字段是否正确」且「目标site是否登录」！" }
+		return { error: true, msgKey: "syncFieldsNotFound" }
 	}
 
 	await chrome.scripting.executeScript({
@@ -23,7 +23,7 @@ export async function injectSyncOnceScript(
 		args: [localStorageData!, cookieData!]
 	})
 
-	return { error: false, msg: "同步成功！" }
+	return { error: false, msgKey: "syncSuccess" }
 }
 
 export function getSyncFieldsData(keys: string[]) {
@@ -47,7 +47,7 @@ export function getSyncFieldsData(keys: string[]) {
 
 export function doSyncFieldsToTarget(data: Record<string, any>, cookies: Record<string, any>) {
 	Object.entries(data).forEach(([k, v]) => localStorage.setItem(k, v))
-	// TODO 默认同步了cookie,后续可以开放个开关
+	// TODO: Add option to toggle cookie sync
 	Object.entries(cookies).forEach(([k, v]) => {
 		// biome-ignore lint/suspicious/noDocumentCookie: <ok>
 		document.cookie = `${k}=${v}; path=/`

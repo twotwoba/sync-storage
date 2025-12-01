@@ -1,7 +1,7 @@
 import { doSyncFieldsToTarget, getSyncFieldsData } from "./inject-sycn-imme"
 
 /**
- * 在源页面注入检测脚本，定期检查登录状态
+ * Inject detector script into source page to check login status periodically
  */
 export async function injectSourceDetector(tabId: number, ruleId: string, keys: string[]) {
 	try {
@@ -16,11 +16,11 @@ export async function injectSourceDetector(tabId: number, ruleId: string, keys: 
 }
 
 /**
- * 在源页面执行的检测函数
- * 定期检查 localStorage 是否有需要同步的 keys
+ * Detector function executed in source page
+ * Periodically checks if localStorage has the required sync keys
  */
 function detectSourceLoginStatus(ruleId: string, keys: string[]) {
-	// 清理之前的轮询
+	// Cleanup previous polling
 	const existingIntervalKey = `__sync_storage_interval_${ruleId}`
 	if ((window as any)[existingIntervalKey]) {
 		clearInterval((window as any)[existingIntervalKey])
@@ -34,15 +34,15 @@ function detectSourceLoginStatus(ruleId: string, keys: string[]) {
 		})
 	}
 
-	// 立即检查一次
+	// Check immediately
 	checkAndNotify()
 
-	// 每 2 秒检查一次
+	// Check every 2 seconds
 	;(window as any)[existingIntervalKey] = setInterval(checkAndNotify, 2000)
 }
 
 /**
- * 清理源页面的检测脚本
+ * Cleanup detector script from source page
  */
 export async function cleanupSourceDetector(tabId: number, ruleId: string) {
 	try {
@@ -58,20 +58,20 @@ export async function cleanupSourceDetector(tabId: number, ruleId: string) {
 			args: [ruleId]
 		})
 	} catch (_error) {
-		// tab 可能已经关闭，忽略错误
+		// Tab might be closed, ignore error
 	}
 }
 
 /**
- * 执行同步：从源页面读取数据，写入目标页面
+ * Perform sync: read data from source page, write to target page
  */
 export async function performSync(
 	sourceTabId: number,
 	targetTabId: number,
 	keys: string[]
-): Promise<{ error: boolean; msg: string }> {
+): Promise<{ error: boolean; msgKey: string }> {
 	try {
-		// 1. 从源页面读取数据
+		// 1. Read data from source page
 		const res = await chrome.scripting.executeScript({
 			target: { tabId: sourceTabId },
 			func: getSyncFieldsData,
@@ -80,18 +80,18 @@ export async function performSync(
 		const { localStorageData, cookieData } = res[0]?.result || {}
 
 		if (!Object.keys(localStorageData || {}).length) {
-			return { error: true, msg: "同步字段不存在" }
+			return { error: true, msgKey: "syncFieldsNotFound" }
 		}
 
-		// 2. 写入目标页面
+		// 2. Write to target page
 		await chrome.scripting.executeScript({
 			target: { tabId: targetTabId },
 			func: doSyncFieldsToTarget,
 			args: [localStorageData!, cookieData!]
 		})
 
-		return { error: false, msg: "自动同步成功！" }
+		return { error: false, msgKey: "autoSyncSuccess" }
 	} catch (error) {
-		return { error: true, msg: String(error) }
+		return { error: true, msgKey: String(error) }
 	}
 }

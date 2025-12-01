@@ -1,12 +1,12 @@
 // ============================================
-// 监听规则状态管理
+// Observe rule state management
 // ============================================
 
 import { isUrlMatch } from "@/lib/utils"
 import { cleanupSourceDetector, injectSourceDetector, performSync } from "./inject-sync-observe"
 
 /**
- * 监听规则类型
+ * Observe rule type
  */
 export interface ObserveRule {
 	id: string
@@ -17,12 +17,12 @@ export interface ObserveRule {
 }
 
 /**
- * 监听状态类型
+ * Observe state type
  */
 export interface ObserveState {
 	sourceTabId: number | null
 	targetTabId: number | null
-	isSourceReady: boolean // 源站是否有需要同步的数据
+	isSourceReady: boolean // Whether source site has data to sync
 	lastSyncTime: number
 }
 
@@ -30,7 +30,7 @@ export const activeRules = new Map<string, ObserveRule>()
 export const observeStates = new Map<string, ObserveState>()
 
 /**
- * 启动监听规则
+ * Start observe rule
  */
 export async function startObserve(rule: ObserveRule) {
 	console.log("[Observe] Starting observe for rule:", rule.id)
@@ -43,12 +43,12 @@ export async function startObserve(rule: ObserveRule) {
 		lastSyncTime: 0
 	})
 
-	// 检查现有的 tabs
+	// Check existing tabs
 	await checkExistingTabs(rule)
 }
 
 /**
- * 停止监听规则
+ * Stop observe rule
  */
 export async function stopObserve(ruleId: string) {
 	console.log("[Observe] Stopping observe for rule:", ruleId)
@@ -63,7 +63,7 @@ export async function stopObserve(ruleId: string) {
 }
 
 /**
- * 检查现有的 tabs 是否匹配规则
+ * Check if existing tabs match the rule
  */
 async function checkExistingTabs(rule: ObserveRule) {
 	const tabs = await chrome.tabs.query({})
@@ -83,14 +83,14 @@ async function checkExistingTabs(rule: ObserveRule) {
 }
 
 /**
- * 源 tab 准备就绪
+ * Source tab is ready
  */
 export async function onSourceTabReady(ruleId: string, tabId: number) {
 	const state = observeStates.get(ruleId)
 	const rule = activeRules.get(ruleId)
 	if (!state || !rule) return
 
-	// 如果是新的 source tab，清理旧的检测器
+	// If new source tab, cleanup old detector
 	if (state.sourceTabId && state.sourceTabId !== tabId) {
 		await cleanupSourceDetector(state.sourceTabId, ruleId)
 	}
@@ -98,12 +98,12 @@ export async function onSourceTabReady(ruleId: string, tabId: number) {
 	state.sourceTabId = tabId
 	console.log("[Observe] Source tab ready:", tabId, "for rule:", ruleId)
 
-	// 注入检测脚本
+	// Inject detector script
 	await injectSourceDetector(tabId, ruleId, rule.keys)
 }
 
 /**
- * 目标 tab 准备就绪
+ * Target tab is ready
  */
 export function onTargetTabReady(ruleId: string, tabId: number) {
 	const state = observeStates.get(ruleId)
@@ -112,19 +112,19 @@ export function onTargetTabReady(ruleId: string, tabId: number) {
 	state.targetTabId = tabId
 	console.log("[Observe] Target tab ready:", tabId, "for rule:", ruleId)
 
-	// 检查是否可以同步
+	// Check if sync is possible
 	trySync(ruleId)
 }
 
 /**
- * 尝试执行同步
+ * Try to perform sync
  */
 export async function trySync(ruleId: string) {
 	const state = observeStates.get(ruleId)
 	const rule = activeRules.get(ruleId)
 	if (!state || !rule) return
 
-	// 检查所有条件
+	// Check all conditions
 	if (!state.sourceTabId || !state.targetTabId || !state.isSourceReady) {
 		console.log("[Observe] Sync conditions not met:", {
 			sourceTabId: state.sourceTabId,
@@ -134,7 +134,7 @@ export async function trySync(ruleId: string) {
 		return
 	}
 
-	// 防止重复同步（5秒内不重复）
+	// Prevent duplicate sync (no repeat within 5 seconds)
 	const now = Date.now()
 	if (now - state.lastSyncTime < 5000) {
 		console.log("[Observe] Sync throttled")
@@ -147,13 +147,13 @@ export async function trySync(ruleId: string) {
 	const result = await performSync(state.sourceTabId, state.targetTabId, rule.keys)
 	console.log("[Observe] Sync result:", result)
 
-	// 通知 popup 同步完成
+	// Notify popup that sync is complete
 	chrome.runtime
 		.sendMessage({
 			type: "observe_sync_complete",
 			payload: { ruleId, ...result }
 		})
 		.catch(() => {
-			// popup 可能没打开，忽略错误
+			// Popup might not be open, ignore error
 		})
 }

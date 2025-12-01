@@ -12,6 +12,7 @@ import {
 	EyeOffIcon,
 	SyncIcon
 } from "@/components/icons"
+import { useI18n } from "@/lib/i18n"
 
 export type SectionItem = {
 	id: string | undefined
@@ -41,6 +42,7 @@ const Section: FC<SectionItem> = ({
 	onCopy
 }) => {
 	const uniqueId = useId()
+	const { t } = useI18n()
 
 	// set sycn item unique id
 	if (id?.startsWith("temp-")) {
@@ -68,8 +70,8 @@ const Section: FC<SectionItem> = ({
 			!syncKeys.filter((item) => item.trim().length > 0).length
 		) {
 			addToast({
-				title: "提示",
-				description: "源地址、目标地址和同步键名不能为空！",
+				title: t("tip"),
+				description: t("emptyFieldsError"),
 				timeout: 1500,
 				color: "warning",
 				radius: "lg",
@@ -83,8 +85,8 @@ const Section: FC<SectionItem> = ({
 
 		if (!isValidUrl(source)) {
 			addToast({
-				title: "提示",
-				description: "源地址格式不正确，请输入有效的 URL（如 https://example.com）",
+				title: t("tip"),
+				description: t("invalidSourceUrl"),
 				timeout: 2000,
 				color: "warning",
 				radius: "lg",
@@ -98,8 +100,8 @@ const Section: FC<SectionItem> = ({
 
 		if (!isValidUrl(target)) {
 			addToast({
-				title: "提示",
-				description: "目标地址格式不正确，请输入有效的 URL（如 https://example.com）",
+				title: t("tip"),
+				description: t("invalidTargetUrl"),
 				timeout: 2000,
 				color: "warning",
 				radius: "lg",
@@ -120,11 +122,11 @@ const Section: FC<SectionItem> = ({
 					type: "sync_once",
 					payload: { source, target, keys: syncKeys }
 				},
-				(response: { error: boolean; msg: string }) => {
+				(response: { error: boolean; msgKey: string }) => {
 					if (response?.error) {
 						addToast({
-							title: "注意",
-							description: response.msg,
+							title: t("warning"),
+							description: t(response.msgKey),
 							timeout: 2800,
 							color: "warning",
 							radius: "lg",
@@ -133,8 +135,8 @@ const Section: FC<SectionItem> = ({
 						return
 					}
 					addToast({
-						title: "成功",
-						description: "同步完成！",
+						title: t("success"),
+						description: t(response.msgKey),
 						timeout: 1200,
 						color: "success",
 						radius: "lg",
@@ -148,7 +150,7 @@ const Section: FC<SectionItem> = ({
 		if (!validate()) return
 
 		if (isObserving) {
-			// 停止监听
+			// Stop observing
 			chrome.runtime.sendMessage(
 				{
 					type: "sync_observe_stop",
@@ -158,8 +160,8 @@ const Section: FC<SectionItem> = ({
 					if (response && !response.error) {
 						setIsObserving(false)
 						addToast({
-							title: "提示",
-							description: "已停止监听",
+							title: t("tip"),
+							description: t("observeStopped"),
 							timeout: 1500,
 							color: "default",
 							radius: "lg",
@@ -169,7 +171,7 @@ const Section: FC<SectionItem> = ({
 				}
 			)
 		} else {
-			// 开启监听
+			// Start observing
 			chrome.runtime.sendMessage(
 				{
 					type: "sync_observe_start",
@@ -179,8 +181,8 @@ const Section: FC<SectionItem> = ({
 					if (response && !response.error) {
 						setIsObserving(true)
 						addToast({
-							title: "成功",
-							description: "监听已开启，当源站登录后将自动同步到目标站",
+							title: t("success"),
+							description: t("observeStarted"),
 							timeout: 2500,
 							color: "success",
 							radius: "lg",
@@ -192,14 +194,14 @@ const Section: FC<SectionItem> = ({
 		}
 	}
 
-	// 监听自动同步完成的消息
+	// Listen for auto-sync completion messages
 	useEffect(() => {
 		const listener = (message: any) => {
 			if (message.type === "observe_sync_complete" && message.payload?.ruleId === id) {
 				if (!message.payload.error) {
 					addToast({
-						title: "自动同步",
-						description: "检测到登录状态，已自动同步数据！",
+						title: t("autoSync"),
+						description: t("autoSyncSuccess"),
 						timeout: 3000,
 						color: "success",
 						radius: "lg",
@@ -210,7 +212,7 @@ const Section: FC<SectionItem> = ({
 		}
 		chrome.runtime.onMessage.addListener(listener)
 		return () => chrome.runtime.onMessage.removeListener(listener)
-	}, [id])
+	}, [id, t])
 
 	return (
 		<motion.div
@@ -224,16 +226,16 @@ const Section: FC<SectionItem> = ({
 			}}
 			layout="position"
 		>
-			{/* 顶部装饰条 */}
+			{/* Top decoration bar */}
 			<div className="h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 opacity-60" />
 
 			<div className="p-4">
-				{/* 源和目标输入区域 */}
+				{/* Source and target input area */}
 				<div className="flex items-center gap-2 mb-3">
 					<div className="flex-1">
 						<Input
-							label="源地址 (Source)"
-							placeholder="https://source-site.com"
+							label={t("sourceLabel")}
+							placeholder={t("sourcePlaceholder")}
 							size="sm"
 							isDisabled={isObserving}
 							value={source}
@@ -251,8 +253,8 @@ const Section: FC<SectionItem> = ({
 					</div>
 					<div className="flex-1">
 						<Input
-							label="目标地址 (Target)"
-							placeholder="https://target-site.com"
+							label={t("targetLabel")}
+							placeholder={t("targetPlaceholder")}
 							size="sm"
 							isDisabled={isObserving}
 							value={target}
@@ -267,14 +269,14 @@ const Section: FC<SectionItem> = ({
 					</div>
 				</div>
 
-				{/* 同步键和操作按钮 */}
+				{/* Sync keys and action buttons */}
 				<div className="flex gap-3">
 					<Textarea
 						className="flex-1"
-						label="同步键名 (Keys)"
+						label={t("keysLabel")}
 						isDisabled={isObserving}
 						value={syncKeys.join("\n")}
-						placeholder="输入要同步的 key，每行一个&#10;例如：&#10;token&#10;userInfo"
+						placeholder={t("keysPlaceholder")}
 						minRows={3}
 						maxRows={5}
 						onChange={(e) => onChange(id, "syncKeys", e.target.value)}
@@ -287,7 +289,7 @@ const Section: FC<SectionItem> = ({
 					/>
 					<div className="flex flex-col gap-2 justify-end">
 						<div className="flex gap-2">
-							<Tooltip content="立即同步" placement="left">
+							<Tooltip content={t("syncNow")} placement="left">
 								<Button
 									className="h-[42px] min-w-[42px] bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-medium rounded-xl shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
 									isDisabled={isObserving}
@@ -296,7 +298,7 @@ const Section: FC<SectionItem> = ({
 									<SyncIcon className="w-5 h-5" />
 								</Button>
 							</Tooltip>
-							<Tooltip content={isObserving ? "停止监听" : "开启监听"} placement="left">
+							<Tooltip content={isObserving ? t("stopObserve") : t("startObserve")} placement="left">
 								<Button
 									className={`h-[42px] min-w-[42px] text-white font-medium rounded-xl shadow-lg transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] ${
 										isObserving
@@ -314,7 +316,7 @@ const Section: FC<SectionItem> = ({
 							</Tooltip>
 						</div>
 						<div className="flex gap-2">
-							<Tooltip content="复制此规则" placement="bottom">
+							<Tooltip content={t("copyRule")} placement="bottom">
 								<Button
 									className="h-[42px] min-w-[42px] bg-white/5 hover:bg-blue-500/20 text-white/60 hover:text-blue-400 rounded-xl border border-white/10 hover:border-blue-500/30 transition-all duration-200"
 									isDisabled={isObserving}
@@ -323,7 +325,7 @@ const Section: FC<SectionItem> = ({
 									<CopyIcon className="w-4 h-4" />
 								</Button>
 							</Tooltip>
-							<Tooltip content="删除此规则" placement="bottom">
+							<Tooltip content={t("deleteRule")} placement="bottom">
 								<Button
 									className="h-[42px] min-w-[42px] bg-white/5 hover:bg-red-500/20 text-white/60 hover:text-red-400 rounded-xl border border-white/10 hover:border-red-500/30 transition-all duration-200"
 									isDisabled={isObserving}

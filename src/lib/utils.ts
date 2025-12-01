@@ -25,7 +25,7 @@ export async function checkWhetherTabExists(url: string) {
 }
 
 /**
- * 获取 URL 的 origin（协议 + 域名）
+ * Get URL origin (protocol + domain)
  */
 function getUrlOrigin(url: string): string {
 	try {
@@ -36,7 +36,7 @@ function getUrlOrigin(url: string): string {
 }
 
 /**
- * 检查 tab URL 是否匹配规则的 URL
+ * Check if tab URL matches rule URL
  */
 export function isUrlMatch(tabUrl: string | undefined, ruleUrl: string): boolean {
 	if (!tabUrl) return false
