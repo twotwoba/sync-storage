@@ -4,7 +4,7 @@ import { addToast, Tooltip } from "@heroui/react";
 import { useLocalStorage } from "@uidotdev/usehooks";
 import { motion } from "framer-motion";
 import { type FC, useId } from "react";
-import { DeleteIcon, SyncIcon, ArrowRightIcon } from "@/components/icons";
+import { DeleteIcon, SyncIcon, ArrowRightIcon, CopyIcon } from "@/components/icons";
 
 export type SectionItem = {
     id: string | undefined;
@@ -20,6 +20,7 @@ export type SectionItem = {
         value: string,
     ) => void;
     onDelete: (id: string) => void;
+    onCopy: (source: string, target: string, syncKeys: string[]) => void;
 };
 
 const Section: FC<SectionItem> = ({
@@ -30,6 +31,7 @@ const Section: FC<SectionItem> = ({
     syncKeys,
     onChange,
     onDelete,
+    onCopy,
 }) => {
     const uniqueId = useId();
 
@@ -187,24 +189,34 @@ const Section: FC<SectionItem> = ({
                     <div className="flex flex-col gap-2 justify-end">
                         <Tooltip content="立即同步" placement="left">
                             <Button
-                                className="h-[52px] min-w-[52px] bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-medium rounded-xl shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+                                className="h-[42px] min-w-[52px] bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-medium rounded-xl shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
                                 isDisabled={isSyncing}
                                 onPress={handleSyncOnce}
                             >
                                 <SyncIcon className="w-5 h-5" />
                             </Button>
                         </Tooltip>
-                        <Tooltip content="删除此规则" placement="left">
-                            <Button
-                                className="h-[36px] min-w-[52px] bg-white/5 hover:bg-red-500/20 text-white/60 hover:text-red-400 rounded-xl border border-white/10 hover:border-red-500/30 transition-all duration-200"
-                                onPress={() => {
-                                    onDelete(id as string);
-                                    localStorage.removeItem(Sync_ID);
-                                }}
-                            >
-                                <DeleteIcon className="w-4 h-4" />
-                            </Button>
-                        </Tooltip>
+                        <div className="flex gap-2">
+                            <Tooltip content="复制此规则" placement="bottom">
+                                <Button
+                                    className="h-[42px] min-w-[42px] bg-white/5 hover:bg-blue-500/20 text-white/60 hover:text-blue-400 rounded-xl border border-white/10 hover:border-blue-500/30 transition-all duration-200"
+                                    onPress={() => onCopy(source, target, syncKeys)}
+                                >
+                                    <CopyIcon className="w-4 h-4" />
+                                </Button>
+                            </Tooltip>
+                            <Tooltip content="删除此规则" placement="bottom">
+                                <Button
+                                    className="h-[42px] min-w-[42px] bg-white/5 hover:bg-red-500/20 text-white/60 hover:text-red-400 rounded-xl border border-white/10 hover:border-red-500/30 transition-all duration-200"
+                                    onPress={() => {
+                                        onDelete(id as string);
+                                        localStorage.removeItem(Sync_ID);
+                                    }}
+                                >
+                                    <DeleteIcon className="w-4 h-4" />
+                                </Button>
+                            </Tooltip>
+                        </div>
                     </div>
                 </div>
             </div>
