@@ -4,3 +4,22 @@ import { twMerge } from "tailwind-merge"
 export function cn(...inputs: ClassValue[]) {
 	return twMerge(clsx(inputs))
 }
+
+/**
+ * check whether the source/target URL already has a tab opened
+ * if not, open a new tab in the background
+ */
+export async function checkWhetherTabExists(url: string) {
+	let tabId = null
+	if (url.endsWith("/")) {
+		url = url.slice(0, -1)
+	}
+	const tabs = await chrome.tabs.query({ url: `${url}/*` })
+	if (tabs.length === 0) {
+		const newTab = await chrome.tabs.create({ url: url, active: false })
+		tabId = newTab.id!
+	} else {
+		tabId = tabs[0].id!
+	}
+	return tabId
+}
