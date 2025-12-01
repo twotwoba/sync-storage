@@ -8,7 +8,7 @@ function App() {
 			<ToastProvider placement="top-center" />
 			<div
 				id="sync-storage-container"
-				className="w-[560px] h-[558px] relative overflow-y-auto bg-gradient-to-br from-[#1a1f2e] via-[#1e2538] to-[#252d42] scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
+				className="w-[640px] h-[558px] relative overflow-y-auto bg-gradient-to-br from-[#1a1f2e] via-[#1e2538] to-[#252d42] scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
 			>
 				<Aurora
 					colorStops={["#3b82f6", "#8b5cf6", "#ec4899"]}

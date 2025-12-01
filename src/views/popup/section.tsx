@@ -50,7 +50,6 @@ const Section: FC<SectionItem> = ({
 	// sync control unique id
 	const Sync_ID = `sync_storage_section_${id}`
 	const Observe_ID = `sync_storage_observe_${id}`
-	const [isSyncing, setIsSyncing] = useLocalStorage(Sync_ID, false)
 	const [isObserving, setIsObserving] = useLocalStorage(Observe_ID, false)
 
 	const isValidUrl = (url: string) => {
@@ -236,7 +235,7 @@ const Section: FC<SectionItem> = ({
 							label="源地址 (Source)"
 							placeholder="https://source-site.com"
 							size="sm"
-							isDisabled={isSyncing}
+							isDisabled={isObserving}
 							value={source}
 							onChange={(e) => onChange(id, "source", e.target.value)}
 							classNames={{
@@ -255,7 +254,7 @@ const Section: FC<SectionItem> = ({
 							label="目标地址 (Target)"
 							placeholder="https://target-site.com"
 							size="sm"
-							isDisabled={isSyncing}
+							isDisabled={isObserving}
 							value={target}
 							onChange={(e) => onChange(id, "target", e.target.value)}
 							classNames={{
@@ -273,7 +272,7 @@ const Section: FC<SectionItem> = ({
 					<Textarea
 						className="flex-1"
 						label="同步键名 (Keys)"
-						isDisabled={isSyncing}
+						isDisabled={isObserving}
 						value={syncKeys.join("\n")}
 						placeholder="输入要同步的 key，每行一个&#10;例如：&#10;token&#10;userInfo"
 						minRows={3}
