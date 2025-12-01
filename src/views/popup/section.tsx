@@ -3,8 +3,15 @@ import { Input, Textarea } from "@heroui/input"
 import { addToast, Tooltip } from "@heroui/react"
 import { useLocalStorage } from "@uidotdev/usehooks"
 import { motion } from "framer-motion"
-import { type FC, useId } from "react"
-import { ArrowRightIcon, CopyIcon, DeleteIcon, SyncIcon } from "@/components/icons"
+import { type FC, useEffect, useId } from "react"
+import {
+	ArrowRightIcon,
+	CopyIcon,
+	DeleteIcon,
+	EyeIcon,
+	EyeOffIcon,
+	SyncIcon
+} from "@/components/icons"
 
 export type SectionItem = {
 	id: string | undefined
@@ -42,7 +49,9 @@ const Section: FC<SectionItem> = ({
 
 	// sync control unique id
 	const Sync_ID = `sync_storage_section_${id}`
+	const Observe_ID = `sync_storage_observe_${id}`
 	const [isSyncing, setIsSyncing] = useLocalStorage(Sync_ID, false)
+	const [isObserving, setIsObserving] = useLocalStorage(Observe_ID, false)
 
 	const isValidUrl = (url: string) => {
 		try {
@@ -136,28 +145,73 @@ const Section: FC<SectionItem> = ({
 			)
 		}
 	}
-	const handleSwitchSync = () => {
-		if (validate()) {
-			if (isSyncing) {
-				localStorage.removeItem(Sync_ID)
-				chrome.runtime.sendMessage({ type: "cleanup_listener" })
-			} else {
-				chrome.runtime.sendMessage({
-					type: "sync_observe",
-					payload: { source, target, keys: syncKeys }
-				})
-			}
-			setIsSyncing(!isSyncing)
+	const handleToggleObserve = () => {
+		if (!validate()) return
+
+		if (isObserving) {
+			// 停止监听
+			chrome.runtime.sendMessage(
+				{
+					type: "sync_observe_stop",
+					payload: { id }
+				},
+				(response) => {
+					if (response && !response.error) {
+						setIsObserving(false)
+						addToast({
+							title: "提示",
+							description: "已停止监听",
+							timeout: 1500,
+							color: "default",
+							radius: "lg",
+							shouldShowTimeoutProgress: true
+						})
+					}
+				}
+			)
+		} else {
+			// 开启监听
+			chrome.runtime.sendMessage(
+				{
+					type: "sync_observe_start",
+					payload: { id, source, target, keys: syncKeys }
+				},
+				(response) => {
+					if (response && !response.error) {
+						setIsObserving(true)
+						addToast({
+							title: "成功",
+							description: "监听已开启，当源站登录后将自动同步到目标站",
+							timeout: 2500,
+							color: "success",
+							radius: "lg",
+							shouldShowTimeoutProgress: true
+						})
+					}
+				}
+			)
 		}
 	}
 
-	chrome.runtime.onMessage.addListener((message, _sender, _sendResponse) => {
-		if (message.type === "cleanup_success") {
-			localStorage.removeItem(Sync_ID)
-			setIsSyncing(false)
+	// 监听自动同步完成的消息
+	useEffect(() => {
+		const listener = (message: any) => {
+			if (message.type === "observe_sync_complete" && message.payload?.ruleId === id) {
+				if (!message.payload.error) {
+					addToast({
+						title: "自动同步",
+						description: "检测到登录状态，已自动同步数据！",
+						timeout: 3000,
+						color: "success",
+						radius: "lg",
+						shouldShowTimeoutProgress: true
+					})
+				}
+			}
 		}
-		return true
-	})
+		chrome.runtime.onMessage.addListener(listener)
+		return () => chrome.runtime.onMessage.removeListener(listener)
+	}, [id])
 
 	return (
 		<motion.div
@@ -233,19 +287,38 @@ const Section: FC<SectionItem> = ({
 						}}
 					/>
 					<div className="flex flex-col gap-2 justify-end">
-						<Tooltip content="立即同步" placement="left">
-							<Button
-								className="h-[42px] min-w-[52px] bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-medium rounded-xl shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
-								isDisabled={isSyncing}
-								onPress={handleSyncOnce}
-							>
-								<SyncIcon className="w-5 h-5" />
-							</Button>
-						</Tooltip>
+						<div className="flex gap-2">
+							<Tooltip content="立即同步" placement="left">
+								<Button
+									className="h-[42px] min-w-[42px] bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-medium rounded-xl shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+									isDisabled={isObserving}
+									onPress={handleSyncOnce}
+								>
+									<SyncIcon className="w-5 h-5" />
+								</Button>
+							</Tooltip>
+							<Tooltip content={isObserving ? "停止监听" : "开启监听"} placement="left">
+								<Button
+									className={`h-[42px] min-w-[42px] text-white font-medium rounded-xl shadow-lg transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] ${
+										isObserving
+											? "bg-gradient-to-r from-amber-500 to-orange-500 shadow-amber-500/25 hover:shadow-amber-500/40"
+											: "bg-gradient-to-r from-violet-500 to-purple-500 shadow-violet-500/25 hover:shadow-violet-500/40"
+									}`}
+									onPress={handleToggleObserve}
+								>
+									{isObserving ? (
+										<EyeOffIcon className="w-5 h-5" />
+									) : (
+										<EyeIcon className="w-5 h-5" />
+									)}
+								</Button>
+							</Tooltip>
+						</div>
 						<div className="flex gap-2">
 							<Tooltip content="复制此规则" placement="bottom">
 								<Button
 									className="h-[42px] min-w-[42px] bg-white/5 hover:bg-blue-500/20 text-white/60 hover:text-blue-400 rounded-xl border border-white/10 hover:border-blue-500/30 transition-all duration-200"
+									isDisabled={isObserving}
 									onPress={() => onCopy(source, target, syncKeys)}
 								>
 									<CopyIcon className="w-4 h-4" />
@@ -254,9 +327,11 @@ const Section: FC<SectionItem> = ({
 							<Tooltip content="删除此规则" placement="bottom">
 								<Button
 									className="h-[42px] min-w-[42px] bg-white/5 hover:bg-red-500/20 text-white/60 hover:text-red-400 rounded-xl border border-white/10 hover:border-red-500/30 transition-all duration-200"
+									isDisabled={isObserving}
 									onPress={() => {
 										onDelete(id as string)
 										localStorage.removeItem(Sync_ID)
+										localStorage.removeItem(Observe_ID)
 									}}
 								>
 									<DeleteIcon className="w-4 h-4" />

@@ -23,3 +23,24 @@ export async function checkWhetherTabExists(url: string) {
 	}
 	return tabId
 }
+
+/**
+ * 获取 URL 的 origin（协议 + 域名）
+ */
+function getUrlOrigin(url: string): string {
+	try {
+		return new URL(url).origin
+	} catch {
+		return url
+	}
+}
+
+/**
+ * 检查 tab URL 是否匹配规则的 URL
+ */
+export function isUrlMatch(tabUrl: string | undefined, ruleUrl: string): boolean {
+	if (!tabUrl) return false
+	const tabOrigin = getUrlOrigin(tabUrl)
+	const ruleOrigin = getUrlOrigin(ruleUrl)
+	return tabOrigin === ruleOrigin
+}
