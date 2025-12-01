@@ -1,27 +1,6 @@
 import { doSyncFieldsToTarget, getSyncFieldsData } from "./inject-sycn-imme"
 
 /**
- * 监听规则类型
- */
-export interface ObserveRule {
-	id: string
-	sourceUrl: string
-	targetUrl: string
-	keys: string[]
-	enabled: boolean
-}
-
-/**
- * 监听状态类型
- */
-export interface ObserveState {
-	sourceTabId: number | null
-	targetTabId: number | null
-	isSourceReady: boolean // 源站是否有需要同步的数据
-	lastSyncTime: number
-}
-
-/**
  * 在源页面注入检测脚本，定期检查登录状态
  */
 export async function injectSourceDetector(tabId: number, ruleId: string, keys: string[]) {
