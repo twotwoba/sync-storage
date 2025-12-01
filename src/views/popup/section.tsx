@@ -4,7 +4,12 @@ import { addToast, Tooltip } from "@heroui/react";
 import { useLocalStorage } from "@uidotdev/usehooks";
 import { motion } from "framer-motion";
 import { type FC, useId } from "react";
-import { DeleteIcon, SyncIcon, ArrowRightIcon, CopyIcon } from "@/components/icons";
+import {
+    DeleteIcon,
+    SyncIcon,
+    ArrowRightIcon,
+    CopyIcon,
+} from "@/components/icons";
 
 export type SectionItem = {
     id: string | undefined;
@@ -43,6 +48,16 @@ const Section: FC<SectionItem> = ({
     // sync control unique id
     const Sync_ID = `sync_storage_section_${id}`;
     const [isSyncing, setIsSyncing] = useLocalStorage(Sync_ID, false);
+
+    const isValidUrl = (url: string) => {
+        try {
+            const parsed = new URL(url.trim());
+            return parsed.protocol === "http:" || parsed.protocol === "https:";
+        } catch {
+            return false;
+        }
+    };
+
     const validate = () => {
         if (
             !source.trim() ||
@@ -51,7 +66,7 @@ const Section: FC<SectionItem> = ({
         ) {
             addToast({
                 title: "提示",
-                description: "源地址、目标地址和同步键不能为空！",
+                description: "源地址、目标地址和同步键名不能为空！",
                 timeout: 1500,
                 color: "warning",
                 radius: "lg",
@@ -62,6 +77,39 @@ const Section: FC<SectionItem> = ({
             });
             return false;
         }
+
+        if (!isValidUrl(source)) {
+            addToast({
+                title: "提示",
+                description:
+                    "源地址格式不正确，请输入有效的 URL（如 https://example.com）",
+                timeout: 2000,
+                color: "warning",
+                radius: "lg",
+                shouldShowTimeoutProgress: true,
+                classNames: {
+                    motionDiv: "w-[400px]",
+                },
+            });
+            return false;
+        }
+
+        if (!isValidUrl(target)) {
+            addToast({
+                title: "提示",
+                description:
+                    "目标地址格式不正确，请输入有效的 URL（如 https://example.com）",
+                timeout: 2000,
+                color: "warning",
+                radius: "lg",
+                shouldShowTimeoutProgress: true,
+                classNames: {
+                    motionDiv: "w-[400px]",
+                },
+            });
+            return false;
+        }
+
         return true;
     };
     const handleSyncOnce = () => {
@@ -200,7 +248,9 @@ const Section: FC<SectionItem> = ({
                             <Tooltip content="复制此规则" placement="bottom">
                                 <Button
                                     className="h-[42px] min-w-[42px] bg-white/5 hover:bg-blue-500/20 text-white/60 hover:text-blue-400 rounded-xl border border-white/10 hover:border-blue-500/30 transition-all duration-200"
-                                    onPress={() => onCopy(source, target, syncKeys)}
+                                    onPress={() =>
+                                        onCopy(source, target, syncKeys)
+                                    }
                                 >
                                     <CopyIcon className="w-4 h-4" />
                                 </Button>
