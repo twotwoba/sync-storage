@@ -13,6 +13,15 @@
 					"classRegex": ["[cls|className]\\s\\:\\=\\s\"([^\"]*)"]
 				}
 			}
+		},
+		"vscode-css-language-server": {
+			"settings": {
+				"css": {
+					"lint": {
+						"unknownAtRules": "ignore"
+					}
+				}
+			}
 		}
 	},
 	"languages": {
