@@ -76,6 +76,13 @@ chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
 		if (message.type === "sync_observe_start") {
 			const { id, source, target, keys } = message.payload
 			;(async () => {
+				// Check if there's already an active rule with the same source and target URLs
+				for (const [_, rule] of activeRules) {
+					if (rule.sourceUrl === source && rule.targetUrl === target) {
+						sendResponse({ error: true, msgKey: "duplicateTaskError" })
+						return
+					}
+				}
 				await startObserve({
 					id,
 					sourceUrl: source,

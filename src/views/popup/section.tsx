@@ -77,7 +77,7 @@ const Section: FC<SectionItem> = ({
 				radius: "lg",
 				shouldShowTimeoutProgress: true,
 				classNames: {
-					motionDiv: "w-[400px]"
+					motionDiv: "w-[500px]"
 				}
 			})
 			return false
@@ -92,7 +92,7 @@ const Section: FC<SectionItem> = ({
 				radius: "lg",
 				shouldShowTimeoutProgress: true,
 				classNames: {
-					motionDiv: "w-[400px]"
+					motionDiv: "w-[500px]"
 				}
 			})
 			return false
@@ -107,7 +107,7 @@ const Section: FC<SectionItem> = ({
 				radius: "lg",
 				shouldShowTimeoutProgress: true,
 				classNames: {
-					motionDiv: "w-[400px]"
+					motionDiv: "w-[500px]"
 				}
 			})
 			return false
@@ -130,7 +130,10 @@ const Section: FC<SectionItem> = ({
 							timeout: 2800,
 							color: "warning",
 							radius: "lg",
-							shouldShowTimeoutProgress: true
+							shouldShowTimeoutProgress: true,
+							classNames: {
+								motionDiv: "w-[500px]"
+							}
 						})
 						return
 					}
@@ -140,7 +143,10 @@ const Section: FC<SectionItem> = ({
 						timeout: 1200,
 						color: "success",
 						radius: "lg",
-						shouldShowTimeoutProgress: true
+						shouldShowTimeoutProgress: true,
+						classNames: {
+							motionDiv: "w-[500px]"
+						}
 					})
 				}
 			)
@@ -165,7 +171,10 @@ const Section: FC<SectionItem> = ({
 							timeout: 1500,
 							color: "default",
 							radius: "lg",
-							shouldShowTimeoutProgress: true
+							shouldShowTimeoutProgress: true,
+							classNames: {
+								motionDiv: "w-[500px]"
+							}
 						})
 					}
 				}
@@ -177,18 +186,33 @@ const Section: FC<SectionItem> = ({
 					type: "sync_observe_start",
 					payload: { id, source, target, keys: syncKeys }
 				},
-				(response) => {
-					if (response && !response.error) {
-						setIsObserving(true)
+				(response: { error: boolean; msgKey: string }) => {
+					if (response?.error) {
 						addToast({
-							title: t("success"),
-							description: t("observeStarted"),
+							title: t("warning"),
+							description: t(response.msgKey),
 							timeout: 2500,
-							color: "success",
+							color: "warning",
 							radius: "lg",
-							shouldShowTimeoutProgress: true
+							shouldShowTimeoutProgress: true,
+							classNames: {
+								motionDiv: "w-[500px]"
+							}
 						})
+						return
 					}
+					setIsObserving(true)
+					addToast({
+						title: t("success"),
+						description: t("observeStarted"),
+						timeout: 2500,
+						color: "success",
+						radius: "lg",
+						shouldShowTimeoutProgress: true,
+						classNames: {
+							motionDiv: "w-[500px]"
+						}
+					})
 				}
 			)
 		}
@@ -298,7 +322,10 @@ const Section: FC<SectionItem> = ({
 									<SyncIcon className="w-5 h-5" />
 								</Button>
 							</Tooltip>
-							<Tooltip content={isObserving ? t("stopObserve") : t("startObserve")} placement="left">
+							<Tooltip
+								content={isObserving ? t("stopObserve") : t("startObserve")}
+								placement="left"
+							>
 								<Button
 									className={`h-[42px] min-w-[42px] text-white font-medium rounded-xl shadow-lg transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] ${
 										isObserving

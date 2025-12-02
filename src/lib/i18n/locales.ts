@@ -40,8 +40,9 @@ export const locales = {
 		syncSuccess: "同步完成！",
 		syncFieldsNotFound: "同步失败，请检查「同步字段是否正确」且「源站是否已登录」！",
 		observeStopped: "已停止监听",
-		observeStarted: "监听已开启，当源站登录后将自动同步到目标站",
-		autoSyncSuccess: "检测到登录状态，已自动同步数据！"
+		observeStarted: "监听已开启，源站storage数据将自动同步到目标站",
+		autoSyncSuccess: "检测到登录状态，已自动同步数据！",
+		duplicateTaskError: "已有相同的任务执行中"
 	},
 	en: {
 		// Title
@@ -79,10 +80,12 @@ export const locales = {
 		invalidSourceUrl: "Invalid source URL. Please enter a valid URL (e.g. https://example.com)",
 		invalidTargetUrl: "Invalid target URL. Please enter a valid URL (e.g. https://example.com)",
 		syncSuccess: "Sync completed!",
-		syncFieldsNotFound: "Sync failed. Please check if sync keys are correct and source site is logged in!",
+		syncFieldsNotFound:
+			"Sync failed. Please check if sync keys are correct and source site is logged in!",
 		observeStopped: "Watching stopped",
-		observeStarted: "Watching started. Data will auto-sync when source site is logged in",
-		autoSyncSuccess: "Login detected. Data has been auto-synced!"
+		observeStarted: "Watching started. Data will auto-sync to target site from source site",
+		autoSyncSuccess: "Login detected. Data has been auto-synced!",
+		duplicateTaskError: "A task with the same configuration is already running"
 	}
 } as const
 
