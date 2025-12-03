@@ -50,7 +50,6 @@ const Section: FC<SectionItem> = ({
 	}
 
 	// sync control unique id
-	const Sync_ID = `sync_storage_section_${id}`
 	const Observe_ID = `sync_storage_observe_${id}`
 	const [isObserving, setIsObserving] = useLocalStorage(Observe_ID, false)
 
@@ -358,7 +357,6 @@ const Section: FC<SectionItem> = ({
 									isDisabled={isObserving}
 									onPress={() => {
 										onDelete(id as string)
-										localStorage.removeItem(Sync_ID)
 										localStorage.removeItem(Observe_ID)
 									}}
 								>
