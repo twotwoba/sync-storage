@@ -312,7 +312,7 @@ const Section: FC<SectionItem> = ({
 					/>
 					<div className="flex flex-col gap-2 justify-end">
 						<div className="flex gap-2">
-							<Tooltip content={t("syncNow")} placement="left">
+							<Tooltip content={t("syncNow")} placement="top">
 								<Button
 									className="h-[42px] min-w-[42px] bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-medium rounded-xl shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
 									isDisabled={isObserving}
@@ -321,10 +321,7 @@ const Section: FC<SectionItem> = ({
 									<SyncIcon className="w-5 h-5" />
 								</Button>
 							</Tooltip>
-							<Tooltip
-								content={isObserving ? t("stopObserve") : t("startObserve")}
-								placement="left"
-							>
+							<Tooltip content={isObserving ? t("stopObserve") : t("startObserve")} placement="top">
 								<Button
 									className={`h-[42px] min-w-[42px] text-white font-medium rounded-xl shadow-lg transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] ${
 										isObserving
