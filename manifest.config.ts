@@ -6,6 +6,7 @@ export default defineManifest({
 	name: packageJson.name,
 	description: packageJson.description,
 	version: packageJson.version,
+	key: "aoecjckdghagpdepipoojdcppilgnngg",
 	author: {
 		email: "ericyuanovo@gmail.com"
 	},
