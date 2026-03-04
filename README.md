@@ -2,6 +2,8 @@
 
 A chrome extension for synchronize different website localStorage/sessionStorage/cookies.
 
+![](./sync-storage-main-fill.png)
+
 ## When to use
 
 It is usually used to facilitate web development.
