@@ -21,7 +21,7 @@ const EmptyState = ({ onAdd }: { onAdd: () => void }) => {
 			<h3 className="text-white/80 text-lg font-bold mb-2 tracking-tight">
 				{t("emptyTitle")}
 			</h3>
-			<p className="text-white/40 text-[13px] text-center mb-8 max-w-[260px] leading-relaxed">
+			<p className="text-white/40 text-[13px] text-center mb-8 max-w-[320px] leading-relaxed">
 				{t("emptyDesc")}
 			</p>
 			<button

@@ -97,20 +97,31 @@ const Section: FC<SectionItem> = ({ id, source, target, syncKeys, onChange, onDe
 				},
 				(response: { error: boolean; msgKey: string }) => {
 					if (response?.error) {
-						// Scenario B: Source not ready, start background monitoring
-						setIsObserving(true)
-						setIsSyncing(false)
-						chrome.runtime.sendMessage({
-							type: "sync_observe_start",
-							payload: { id, source, target, keys: syncKeys }
-						})
-						addToast({
-							title: t("tip"),
-							description: t("observeStarted"),
-							timeout: 2000,
-							color: "warning",
-							radius: "lg"
-						})
+						if (response.msgKey === "syncFieldsNotFound") {
+							// Scenario B: Source not ready, start background monitoring
+							setIsObserving(true)
+							setIsSyncing(false)
+							chrome.runtime.sendMessage({
+								type: "sync_observe_start",
+								payload: { id, source, target, keys: syncKeys }
+							})
+							addToast({
+								title: t("tip"),
+								description: t("observeStarted"),
+								timeout: 2000,
+								color: "warning",
+								radius: "lg"
+							})
+						} else {
+							setIsSyncing(false)
+							addToast({
+								title: t("tip"),
+								description: t(response.msgKey),
+								timeout: 3000,
+								color: "danger",
+								radius: "lg"
+							})
+						}
 						return
 					}
 

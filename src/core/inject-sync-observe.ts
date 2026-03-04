@@ -17,7 +17,7 @@ export async function injectSourceDetector(tabId: number, ruleId: string, keys: 
 
 /**
  * Detector function executed in source page
- * Periodically checks if localStorage has the required sync keys
+ * Periodically checks if storage (local/session/cookie) has the required sync keys
  */
 function detectSourceLoginStatus(ruleId: string, keys: string[]) {
 	// Cleanup previous polling
@@ -27,7 +27,13 @@ function detectSourceLoginStatus(ruleId: string, keys: string[]) {
 	}
 
 	const checkAndNotify = () => {
-		const hasKeys = keys.some((k) => localStorage.getItem(k))
+		const hasKeys = keys.some((k) => {
+			return (
+				localStorage.getItem(k) ||
+				sessionStorage.getItem(k) ||
+				document.cookie.match(new RegExp(`(^|;\\s*)(${k})=([^;]*)`))
+			)
+		})
 		chrome.runtime.sendMessage({
 			type: "observe_source_status",
 			payload: { ruleId, isReady: hasKeys }
@@ -77,20 +83,34 @@ export async function performSync(
 			func: getSyncFieldsData,
 			args: [keys]
 		})
-		const { localStorageData, cookieData } = res[0]?.result || {}
+		const { localStorageData, sessionStorageData, cookieData } = res[0]?.result || {}
 
-		if (!Object.keys(localStorageData || {}).length) {
+		const hasData =
+			Object.keys(localStorageData || {}).length > 0 ||
+			Object.keys(sessionStorageData || {}).length > 0 ||
+			Object.keys(cookieData || {}).length > 0
+
+		if (!hasData) {
 			return { error: true, msgKey: "syncFieldsNotFound" }
 		}
 
 		// 2. Write to target page
-		await chrome.scripting.executeScript({
+		const writeRes = await chrome.scripting.executeScript({
 			target: { tabId: targetTabId },
 			func: doSyncFieldsToTarget,
-			args: [localStorageData!, cookieData!]
+			args: [localStorageData!, sessionStorageData!, cookieData!]
 		})
 
-		return { error: false, msgKey: "autoSyncSuccess" }
+		const writeStatus = writeRes[0]?.result
+
+		if (
+			writeStatus &&
+			(writeStatus.localStorage || writeStatus.sessionStorage || writeStatus.cookie)
+		) {
+			return { error: false, msgKey: "autoSyncSuccess" }
+		}
+
+		return { error: true, msgKey: "syncFailed" }
 	} catch (error) {
 		return { error: true, msgKey: String(error) }
 	}

@@ -10,7 +10,8 @@ export const locales = {
 
 		// 空状态
 		emptyTitle: "暂无同步规则",
-		emptyDesc: "点击下方按钮创建你的第一个同步规则，实现跨站点的 localStorage 数据同步",
+		emptyDesc:
+			"点击下方按钮创建你的第一个同步规则，实现跨站点的 localStorage/sessionStorage/Cookie 数据同步",
 		createRule: "创建规则",
 		addNewRule: "添加新规则",
 		syncCount: "{count} 个同步项",
@@ -58,7 +59,7 @@ export const locales = {
 		// Empty state
 		emptyTitle: "No sync rules yet",
 		emptyDesc:
-			"Click the button below to create your first sync rule for cross-site localStorage synchronization",
+			"Click the button below to create your first sync rule for cross-site localStorage/sessionStorage/Cookie synchronization",
 		createRule: "Create Rule",
 		addNewRule: "Add New Rule",
 		syncCount: "{count} sync items",

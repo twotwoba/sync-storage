@@ -62,12 +62,17 @@ chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
 		// Scenario A & B entry point: sync once
 		if (message.type === "sync_once") {
 			;(async () => {
-				const { source, target, keys } = message.payload
-				const sourceTabId = await checkWhetherTabExists(source)
-				const targetTabId = await checkWhetherTabExists(target)
+				try {
+					const { source, target, keys } = message.payload
+					const sourceTabId = await checkWhetherTabExists(source)
+					const targetTabId = await checkWhetherTabExists(target)
 
-				const res = await injectSyncOnceScript(sourceTabId, targetTabId, keys)
-				sendResponse(res)
+					const res = await injectSyncOnceScript(sourceTabId, targetTabId, keys)
+					sendResponse(res)
+				} catch (error) {
+					console.error("Sync once error:", error)
+					sendResponse({ error: true, msgKey: String(error) })
+				}
 			})()
 			return true
 		}
@@ -76,14 +81,19 @@ chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
 		if (message.type === "sync_observe_start") {
 			const { id, source, target, keys } = message.payload
 			;(async () => {
-				await startObserve({
-					id,
-					sourceUrl: source,
-					targetUrl: target,
-					keys,
-					enabled: true
-				})
-				sendResponse({ error: false })
+				try {
+					await startObserve({
+						id,
+						sourceUrl: source,
+						targetUrl: target,
+						keys,
+						enabled: true
+					})
+					sendResponse({ error: false })
+				} catch (error) {
+					console.error("Start observe error:", error)
+					sendResponse({ error: true })
+				}
 			})()
 			return true
 		}
@@ -92,8 +102,13 @@ chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
 		if (message.type === "sync_observe_stop") {
 			const { id } = message.payload
 			;(async () => {
-				await stopObserve(id)
-				sendResponse({ error: false })
+				try {
+					await stopObserve(id)
+					sendResponse({ error: false })
+				} catch (error) {
+					console.error("Stop observe error:", error)
+					sendResponse({ error: true })
+				}
 			})()
 			return true
 		}
