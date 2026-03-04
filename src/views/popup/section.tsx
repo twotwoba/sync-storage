@@ -1,16 +1,16 @@
-import { Button } from "@heroui/button"
-import { Input, Textarea } from "@heroui/input"
 import { addToast, Tooltip } from "@heroui/react"
 import { useLocalStorage } from "@uidotdev/usehooks"
-import { motion } from "framer-motion"
-import { type FC, useEffect, useId } from "react"
+import { AnimatePresence, motion } from "framer-motion"
+import { type FC, useEffect, useId, useState } from "react"
 import {
 	ArrowRightIcon,
 	CopyIcon,
-	DeleteIcon,
 	EyeIcon,
 	EyeOffIcon,
-	SyncIcon
+	KeyIcon,
+	PlusIcon,
+	RefreshCwIcon,
+	Trash2Icon
 } from "@/components/icons"
 import { useI18n } from "@/lib/i18n"
 
@@ -25,7 +25,7 @@ export type SectionItem = {
 	onChange: (
 		id: string | undefined,
 		field: "source" | "target" | "syncKeys" | number,
-		value: string
+		value: any
 	) => void
 	onDelete: (id: string) => void
 	onCopy: (source: string, target: string, syncKeys: string[]) => void
@@ -43,13 +43,15 @@ const Section: FC<SectionItem> = ({
 }) => {
 	const uniqueId = useId()
 	const { t } = useI18n()
+	const [newKey, setNewKey] = useState("")
+	const [isSyncing, setIsSyncing] = useState(false)
 
-	// set sycn item unique id
+	// Set sync item unique id if it's a temporary one
 	if (id?.startsWith("temp-")) {
 		onChange(id, index, uniqueId)
 	}
 
-	// sync control unique id
+	// Sync control unique id
 	const Observe_ID = `sync_storage_observe_${id}`
 	const [isObserving, setIsObserving] = useLocalStorage(Observe_ID, false)
 
@@ -63,21 +65,14 @@ const Section: FC<SectionItem> = ({
 	}
 
 	const validate = () => {
-		if (
-			!source.trim() ||
-			!target.trim() ||
-			!syncKeys.filter((item) => item.trim().length > 0).length
-		) {
+		if (!source.trim() || !target.trim() || !syncKeys.length) {
 			addToast({
 				title: t("tip"),
 				description: t("emptyFieldsError"),
 				timeout: 1500,
 				color: "warning",
 				radius: "lg",
-				shouldShowTimeoutProgress: true,
-				classNames: {
-					motionDiv: "w-[500px]"
-				}
+				shouldShowTimeoutProgress: true
 			})
 			return false
 		}
@@ -89,10 +84,7 @@ const Section: FC<SectionItem> = ({
 				timeout: 2000,
 				color: "warning",
 				radius: "lg",
-				shouldShowTimeoutProgress: true,
-				classNames: {
-					motionDiv: "w-[500px]"
-				}
+				shouldShowTimeoutProgress: true
 			})
 			return false
 		}
@@ -104,24 +96,26 @@ const Section: FC<SectionItem> = ({
 				timeout: 2000,
 				color: "warning",
 				radius: "lg",
-				shouldShowTimeoutProgress: true,
-				classNames: {
-					motionDiv: "w-[500px]"
-				}
+				shouldShowTimeoutProgress: true
 			})
 			return false
 		}
 
 		return true
 	}
+
 	const handleSyncOnce = () => {
 		if (validate()) {
+			setIsSyncing(true)
 			chrome.runtime.sendMessage(
 				{
 					type: "sync_once",
 					payload: { source, target, keys: syncKeys }
 				},
 				(response: { error: boolean; msgKey: string }) => {
+					setTimeout(() => {
+						setIsSyncing(false)
+					}, 800)
 					if (response?.error) {
 						addToast({
 							title: t("warning"),
@@ -129,10 +123,7 @@ const Section: FC<SectionItem> = ({
 							timeout: 2800,
 							color: "warning",
 							radius: "lg",
-							shouldShowTimeoutProgress: true,
-							classNames: {
-								motionDiv: "w-[500px]"
-							}
+							shouldShowTimeoutProgress: true
 						})
 						return
 					}
@@ -142,25 +133,21 @@ const Section: FC<SectionItem> = ({
 						timeout: 1200,
 						color: "success",
 						radius: "lg",
-						shouldShowTimeoutProgress: true,
-						classNames: {
-							motionDiv: "w-[500px]"
-						}
+						shouldShowTimeoutProgress: true
 					})
 				}
 			)
 		}
 	}
+
 	const handleToggleObserve = () => {
-		if (!validate()) return
+		if (!validate()) {
+			return
+		}
 
 		if (isObserving) {
-			// Stop observing
 			chrome.runtime.sendMessage(
-				{
-					type: "sync_observe_stop",
-					payload: { id }
-				},
+				{ type: "sync_observe_stop", payload: { id } },
 				(response) => {
 					if (response && !response.error) {
 						setIsObserving(false)
@@ -169,22 +156,14 @@ const Section: FC<SectionItem> = ({
 							description: t("observeStopped"),
 							timeout: 1500,
 							color: "default",
-							radius: "lg",
-							shouldShowTimeoutProgress: true,
-							classNames: {
-								motionDiv: "w-[500px]"
-							}
+							radius: "lg"
 						})
 					}
 				}
 			)
 		} else {
-			// Start observing
 			chrome.runtime.sendMessage(
-				{
-					type: "sync_observe_start",
-					payload: { id, source, target, keys: syncKeys }
-				},
+				{ type: "sync_observe_start", payload: { id, source, target, keys: syncKeys } },
 				(response: { error: boolean; msgKey: string }) => {
 					if (response?.error) {
 						addToast({
@@ -192,11 +171,7 @@ const Section: FC<SectionItem> = ({
 							description: t(response.msgKey),
 							timeout: 2500,
 							color: "warning",
-							radius: "lg",
-							shouldShowTimeoutProgress: true,
-							classNames: {
-								motionDiv: "w-[500px]"
-							}
+							radius: "lg"
 						})
 						return
 					}
@@ -206,18 +181,29 @@ const Section: FC<SectionItem> = ({
 						description: t("observeStarted"),
 						timeout: 2500,
 						color: "success",
-						radius: "lg",
-						shouldShowTimeoutProgress: true,
-						classNames: {
-							motionDiv: "w-[500px]"
-						}
+						radius: "lg"
 					})
 				}
 			)
 		}
 	}
 
-	// Listen for auto-sync completion messages
+	const handleAddKey = () => {
+		const key = newKey.trim()
+		if (key && !syncKeys.includes(key)) {
+			onChange(id, "syncKeys", [...syncKeys, key])
+			setNewKey("")
+		}
+	}
+
+	const handleRemoveKey = (keyToRemove: string) => {
+		onChange(
+			id,
+			"syncKeys",
+			syncKeys.filter((k) => k !== keyToRemove)
+		)
+	}
+
 	useEffect(() => {
 		const listener = (message: any) => {
 			if (message.type === "observe_sync_complete" && message.payload?.ruleId === id) {
@@ -227,142 +213,189 @@ const Section: FC<SectionItem> = ({
 						description: t("autoSyncSuccess"),
 						timeout: 3000,
 						color: "success",
-						radius: "lg",
-						shouldShowTimeoutProgress: true
+						radius: "lg"
 					})
 				}
 			}
 		}
 		chrome.runtime.onMessage.addListener(listener)
-		return () => chrome.runtime.onMessage.removeListener(listener)
+		return () => {
+			chrome.runtime.onMessage.removeListener(listener)
+		}
 	}, [id, t])
 
 	return (
 		<motion.div
-			className="relative rounded-2xl mt-3 bg-gradient-to-br from-[rgba(255,255,255,0.1)] to-[rgba(255,255,255,0.05)] backdrop-blur-lg border border-white/10 overflow-hidden group hover:border-white/20 transition-all duration-300"
+			className="group relative rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition-all hover:border-emerald-500/20 hover:bg-white/[0.05] mb-4 overflow-hidden"
 			initial={{ opacity: 0, y: 12 }}
 			animate={{ opacity: 1, y: 0 }}
-			exit={{ opacity: 0, y: -12 }}
-			transition={{
-				duration: 0.25,
-				ease: "easeOut"
-			}}
-			layout="position"
+			exit={{ opacity: 0, scale: 0.95 }}
+			layout
 		>
-			{/* Top decoration bar */}
-			<div className="h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 opacity-60" />
+			{/* Status indicator */}
+			<div className="absolute top-4 right-4">
+				<div
+					className={`w-2 h-2 rounded-full ${
+						isObserving
+							? "bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]"
+							: "bg-white/10"
+					}`}
+				/>
+			</div>
 
-			<div className="p-4">
-				{/* Source and target input area */}
-				<div className="flex items-center gap-2 mb-3">
-					<div className="flex-1">
-						<Input
-							label={t("sourceLabel")}
-							placeholder={t("sourcePlaceholder")}
-							size="sm"
-							isDisabled={isObserving}
-							value={source}
-							onChange={(e) => onChange(id, "source", e.target.value)}
-							classNames={{
-								inputWrapper:
-									"!bg-white/5 border-white/10 !py-1 data-[hover=true]:!bg-white/10 data-[focus=true]:!bg-white/10 data-[focus=true]:!border-sky-500/50 transition-colors",
-								input: "!text-white/80 placeholder:text-white/30",
-								label: "!text-white font-medium"
-							}}
-						/>
-					</div>
-					<div className="flex-shrink-0">
-						<ArrowRightIcon className="text-white/40" />
-					</div>
-					<div className="flex-1">
-						<Input
-							label={t("targetLabel")}
-							placeholder={t("targetPlaceholder")}
-							size="sm"
-							isDisabled={isObserving}
-							value={target}
-							onChange={(e) => onChange(id, "target", e.target.value)}
-							classNames={{
-								inputWrapper:
-									"!bg-white/5 border-white/10 !py-1 data-[hover=true]:!bg-white/10 data-[focus=true]:!bg-white/10 data-[focus=true]:!border-sky-500/50 transition-colors",
-								input: "!text-white/80 placeholder:text-white/30",
-								label: "!text-white font-medium"
-							}}
-						/>
-					</div>
-				</div>
-
-				{/* Sync keys and action buttons */}
-				<div className="flex gap-3">
-					<Textarea
-						className="flex-1"
-						label={t("keysLabel")}
-						isDisabled={isObserving}
-						value={syncKeys.join("\n")}
-						placeholder={t("keysPlaceholder")}
-						minRows={3}
-						maxRows={5}
-						onChange={(e) => onChange(id, "syncKeys", e.target.value)}
-						classNames={{
-							inputWrapper:
-								"!bg-white/5 border-white/10 data-[hover=true]:!bg-white/10 data-[focus=true]:!bg-white/10 data-[focus=true]:!border-sky-500/50 transition-colors",
-							input: "!text-white/80 placeholder:text-white/30 text-sm",
-							label: "!text-white font-medium"
+			{/* URL Row */}
+			<div className="flex items-center gap-3 mb-5 pr-6">
+				<div className="flex-1 min-w-0">
+					<p className="text-[10px] uppercase tracking-wider text-white/30 mb-1.5 font-bold">
+						{t("sourceLabel")}
+					</p>
+					<input
+						type="text"
+						value={source}
+						disabled={isObserving}
+						onChange={(e) => {
+							onChange(id, "source", e.target.value)
 						}}
+						placeholder={t("sourcePlaceholder")}
+						className="w-full bg-transparent border-none p-0 text-[13px] text-white/80 placeholder:text-white/20 focus:ring-0 font-mono truncate outline-none"
 					/>
-					<div className="flex flex-col gap-2 justify-end">
-						<div className="flex gap-2">
-							<Tooltip content={t("syncNow")} placement="top">
-								<Button
-									className="h-[42px] min-w-[42px] bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-medium rounded-xl shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
-									isDisabled={isObserving}
-									onPress={handleSyncOnce}
-								>
-									<SyncIcon className="w-5 h-5" />
-								</Button>
-							</Tooltip>
-							<Tooltip content={isObserving ? t("stopObserve") : t("startObserve")} placement="top">
-								<Button
-									className={`h-[42px] min-w-[42px] text-white font-medium rounded-xl shadow-lg transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] ${
-										isObserving
-											? "bg-gradient-to-r from-amber-500 to-orange-500 shadow-amber-500/25 hover:shadow-amber-500/40"
-											: "bg-gradient-to-r from-violet-500 to-purple-500 shadow-violet-500/25 hover:shadow-violet-500/40"
-									}`}
-									onPress={handleToggleObserve}
-								>
-									{isObserving ? (
-										<EyeOffIcon className="w-5 h-5" />
-									) : (
-										<EyeIcon className="w-5 h-5" />
-									)}
-								</Button>
-							</Tooltip>
-						</div>
-						<div className="flex gap-2">
-							<Tooltip content={t("copyRule")} placement="bottom">
-								<Button
-									className="h-[42px] min-w-[42px] bg-white/5 hover:bg-blue-500/20 text-white/60 hover:text-blue-400 rounded-xl border border-white/10 hover:border-blue-500/30 transition-all duration-200"
-									isDisabled={isObserving}
-									onPress={() => onCopy(source, target, syncKeys)}
-								>
-									<CopyIcon className="w-4 h-4" />
-								</Button>
-							</Tooltip>
-							<Tooltip content={t("deleteRule")} placement="bottom">
-								<Button
-									className="h-[42px] min-w-[42px] bg-white/5 hover:bg-red-500/20 text-white/60 hover:text-red-400 rounded-xl border border-white/10 hover:border-red-500/30 transition-all duration-200"
-									isDisabled={isObserving}
-									onPress={() => {
-										onDelete(id as string)
-										localStorage.removeItem(Observe_ID)
-									}}
-								>
-									<DeleteIcon className="w-4 h-4" />
-								</Button>
-							</Tooltip>
-						</div>
-					</div>
 				</div>
+				<div className="pt-4 flex-shrink-0">
+					<ArrowRightIcon className="w-4 h-4 text-white/20" />
+				</div>
+				<div className="flex-1 min-w-0 text-right">
+					<p className="text-[10px] uppercase tracking-wider text-white/30 mb-1.5 font-bold">
+						{t("targetLabel")}
+					</p>
+					<input
+						type="text"
+						value={target}
+						disabled={isObserving}
+						onChange={(e) => {
+							onChange(id, "target", e.target.value)
+						}}
+						placeholder={t("targetPlaceholder")}
+						className="w-full bg-transparent border-none p-0 text-[13px] text-white/80 placeholder:text-white/20 focus:ring-0 font-mono text-right truncate outline-none"
+					/>
+				</div>
+			</div>
+
+			{/* Keys Chips Row */}
+			<div className="flex items-start gap-2 mb-5">
+				<KeyIcon className="w-3.5 h-3.5 text-white/20 shrink-0 mt-1.5" />
+				<div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
+					<AnimatePresence>
+						{syncKeys.map((key) => (
+							<motion.span
+								key={key}
+								initial={{ opacity: 0, scale: 0.8 }}
+								animate={{ opacity: 1, scale: 1 }}
+								exit={{ opacity: 0, scale: 0.8 }}
+								className="inline-flex items-center gap-1.5 rounded-lg bg-white/5 border border-white/5 px-2.5 py-1 text-[11px] font-mono text-white/60 group/chip hover:bg-white/10 hover:border-white/10 transition-colors"
+							>
+								{key}
+								{!isObserving && (
+									<button
+										type="button"
+										onClick={() => {
+											handleRemoveKey(key)
+										}}
+										className="text-white/20 hover:text-red-400 transition-colors cursor-pointer"
+									>
+										×
+									</button>
+								)}
+							</motion.span>
+						))}
+					</AnimatePresence>
+					{!isObserving && (
+						<div className="flex items-center gap-1.5 h-[26.5px] bg-white/[0.02] rounded-lg px-2 border border-dashed border-white/10 focus-within:border-emerald-500/30 transition-colors">
+							<input
+								type="text"
+								value={newKey}
+								onChange={(e) => {
+									setNewKey(e.target.value)
+								}}
+								onKeyDown={(e) => {
+									if (e.key === "Enter") {
+										handleAddKey()
+									}
+								}}
+								placeholder={t("addKey")}
+								className="bg-transparent border-none p-0 text-[11px] text-white/50 placeholder:text-white/20 focus:ring-0 outline-none min-w-15"
+							/>
+							<button
+								type="button"
+								onClick={handleAddKey}
+								className="text-white/30 hover:text-emerald-500 transition-colors cursor-pointer"
+							>
+								<PlusIcon className="w-3 h-3" />
+							</button>
+						</div>
+					)}
+				</div>
+			</div>
+
+			{/* Actions Row */}
+			<div className="flex items-center gap-2 pt-3 border-t border-white/5">
+				<button
+					type="button"
+					onClick={handleSyncOnce}
+					disabled={isObserving || isSyncing}
+					className="flex items-center gap-2 rounded-xl px-4 py-2 text-[12px] font-bold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 disabled:opacity-50 transition-all duration-200 cursor-pointer active:scale-95"
+				>
+					<RefreshCwIcon className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
+					{isSyncing ? t("syncing") : t("syncNow")}
+				</button>
+
+				<button
+					type="button"
+					onClick={handleToggleObserve}
+					className={`flex items-center gap-2 rounded-xl px-4 py-2 text-[12px] font-bold transition-all duration-200 cursor-pointer active:scale-95 ${
+						isObserving
+							? "text-amber-400 bg-amber-500/10 hover:bg-amber-500/20"
+							: "text-white/40 bg-white/5 hover:bg-white/10"
+					}`}
+				>
+					{isObserving ? (
+						<>
+							<EyeIcon className="w-3.5 h-3.5" />
+							{t("isMonitoring")}
+						</>
+					) : (
+						<>
+							<EyeOffIcon className="w-3.5 h-3.5" />
+							{t("notMonitoring")}
+						</>
+					)}
+				</button>
+
+				<div className="flex-1" />
+
+				<Tooltip content={t("copyRule")}>
+					<button
+						type="button"
+						onClick={() => {
+							onCopy(source, target, syncKeys)
+						}}
+						className="flex items-center justify-center w-8 h-8 rounded-xl text-white/30 hover:text-white hover:bg-white/10 transition-all duration-200 cursor-pointer"
+					>
+						<CopyIcon className="w-3.5 h-3.5" />
+					</button>
+				</Tooltip>
+
+				<Tooltip content={t("deleteRule")}>
+					<button
+						type="button"
+						onClick={() => {
+							onDelete(id as string)
+							localStorage.removeItem(Observe_ID)
+						}}
+						className="flex items-center justify-center w-8 h-8 rounded-xl text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200 cursor-pointer"
+					>
+						<Trash2Icon className="w-3.5 h-3.5" />
+					</button>
+				</Tooltip>
 			</div>
 		</motion.div>
 	)
