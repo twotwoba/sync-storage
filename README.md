@@ -4,14 +4,9 @@ A chrome extension for synchronize different website localStorage/sessionStorage
 
 ![](./sync-storage-main-fill.png)
 
-## When to use
+## Introduction
 
-It is usually used to facilitate web development.
-
-Here is what it can do:
-
-1. Manual synchronization: If the source website or the target website is not opened in the browser, a new tab will be automatically opened to assist next action,and if the source website storage has the settings keys data, it will be synchronized to the target website storage.
-2. Automatic synchronization: You only need to fill in the source website url and the target website url and then click the listening button.When both the source website and the target website are ready and the corresponding keys exist in the source website, the data will be automatically synchronized to the target website storage.
+Sync Storage is a must-have efficiency booster for frontend developers. It syncs localStorage, sessionStorage and Cookies across sites with one click, supports real-time monitoring of source site data changes and auto-sync to the target site. With simple configuration, you can seamlessly sync login status and business data across environments, say goodbye to manual copying, and greatly improve development, debugging and testing efficiency.
 
 ## Get started
 
