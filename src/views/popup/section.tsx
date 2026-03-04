@@ -1,12 +1,10 @@
 import { addToast, Tooltip } from "@heroui/react"
 import { useLocalStorage } from "@uidotdev/usehooks"
 import { AnimatePresence, motion } from "framer-motion"
-import { type FC, useEffect, useId, useState } from "react"
+import { type FC, useEffect, useState, useCallback } from "react"
 import {
 	ArrowRightIcon,
 	CopyIcon,
-	EyeIcon,
-	EyeOffIcon,
 	KeyIcon,
 	PlusIcon,
 	RefreshCwIcon,
@@ -15,45 +13,26 @@ import {
 import { useI18n } from "@/lib/i18n"
 
 export type SectionItem = {
-	id: string | undefined
+	id: string
 	index: number
 
 	source: string
 	target: string
 	syncKeys: string[]
 
-	onChange: (
-		id: string | undefined,
-		field: "source" | "target" | "syncKeys" | number,
-		value: any
-	) => void
+	onChange: (id: string, field: "source" | "target" | "syncKeys", value: any) => void
 	onDelete: (id: string) => void
 	onCopy: (source: string, target: string, syncKeys: string[]) => void
 }
 
-const Section: FC<SectionItem> = ({
-	index,
-	id,
-	source,
-	target,
-	syncKeys,
-	onChange,
-	onDelete,
-	onCopy
-}) => {
-	const uniqueId = useId()
+const Section: FC<SectionItem> = ({ id, source, target, syncKeys, onChange, onDelete, onCopy }) => {
 	const { t } = useI18n()
 	const [newKey, setNewKey] = useState("")
 	const [isSyncing, setIsSyncing] = useState(false)
+	const [showSuccessGlow, setShowSuccessGlow] = useState(false)
 
-	// Set sync item unique id if it's a temporary one
-	if (id?.startsWith("temp-")) {
-		onChange(id, index, uniqueId)
-	}
-
-	// Sync control unique id
-	const Observe_ID = `sync_storage_observe_${id}`
-	const [isObserving, setIsObserving] = useLocalStorage(Observe_ID, false)
+	// Observe state from background
+	const [isObserving, setIsObserving] = useLocalStorage(`sync_storage_observe_${id}`, false)
 
 	const isValidUrl = (url: string) => {
 		try {
@@ -64,7 +43,7 @@ const Section: FC<SectionItem> = ({
 		}
 	}
 
-	const validate = () => {
+	const validate = useCallback(() => {
 		if (!source.trim() || !target.trim() || !syncKeys.length) {
 			addToast({
 				title: t("tip"),
@@ -77,22 +56,10 @@ const Section: FC<SectionItem> = ({
 			return false
 		}
 
-		if (!isValidUrl(source)) {
+		if (!isValidUrl(source) || !isValidUrl(target)) {
 			addToast({
 				title: t("tip"),
-				description: t("invalidSourceUrl"),
-				timeout: 2000,
-				color: "warning",
-				radius: "lg",
-				shouldShowTimeoutProgress: true
-			})
-			return false
-		}
-
-		if (!isValidUrl(target)) {
-			addToast({
-				title: t("tip"),
-				description: t("invalidTargetUrl"),
+				description: t(!isValidUrl(source) ? "invalidSourceUrl" : "invalidTargetUrl"),
 				timeout: 2000,
 				color: "warning",
 				radius: "lg",
@@ -102,10 +69,26 @@ const Section: FC<SectionItem> = ({
 		}
 
 		return true
-	}
+	}, [source, target, syncKeys, t])
 
-	const handleSyncOnce = () => {
-		if (validate()) {
+	const handleSync = () => {
+		if (!validate()) {
+			return
+		}
+
+		if (isObserving) {
+			// Stop Syncing (Scenario B - Stop)
+			chrome.runtime.sendMessage(
+				{ type: "sync_observe_stop", payload: { id } },
+				(response) => {
+					if (response && !response.error) {
+						setIsObserving(false)
+						setIsSyncing(false)
+					}
+				}
+			)
+		} else {
+			// Start Syncing
 			setIsSyncing(true)
 			chrome.runtime.sendMessage(
 				{
@@ -113,76 +96,38 @@ const Section: FC<SectionItem> = ({
 					payload: { source, target, keys: syncKeys }
 				},
 				(response: { error: boolean; msgKey: string }) => {
-					setTimeout(() => {
-						setIsSyncing(false)
-					}, 800)
 					if (response?.error) {
+						// Scenario B: Source not ready, start background monitoring
+						setIsObserving(true)
+						setIsSyncing(false)
+						chrome.runtime.sendMessage({
+							type: "sync_observe_start",
+							payload: { id, source, target, keys: syncKeys }
+						})
 						addToast({
-							title: t("warning"),
-							description: t(response.msgKey),
-							timeout: 2800,
+							title: t("tip"),
+							description: t("observeStarted"),
+							timeout: 2000,
 							color: "warning",
-							radius: "lg",
-							shouldShowTimeoutProgress: true
+							radius: "lg"
 						})
 						return
 					}
+
+					// Scenario A: Instant Sync Success
+					setShowSuccessGlow(true)
 					addToast({
 						title: t("success"),
 						description: t(response.msgKey),
 						timeout: 1200,
 						color: "success",
-						radius: "lg",
-						shouldShowTimeoutProgress: true
-					})
-				}
-			)
-		}
-	}
-
-	const handleToggleObserve = () => {
-		if (!validate()) {
-			return
-		}
-
-		if (isObserving) {
-			chrome.runtime.sendMessage(
-				{ type: "sync_observe_stop", payload: { id } },
-				(response) => {
-					if (response && !response.error) {
-						setIsObserving(false)
-						addToast({
-							title: t("tip"),
-							description: t("observeStopped"),
-							timeout: 1500,
-							color: "default",
-							radius: "lg"
-						})
-					}
-				}
-			)
-		} else {
-			chrome.runtime.sendMessage(
-				{ type: "sync_observe_start", payload: { id, source, target, keys: syncKeys } },
-				(response: { error: boolean; msgKey: string }) => {
-					if (response?.error) {
-						addToast({
-							title: t("warning"),
-							description: t(response.msgKey),
-							timeout: 2500,
-							color: "warning",
-							radius: "lg"
-						})
-						return
-					}
-					setIsObserving(true)
-					addToast({
-						title: t("success"),
-						description: t("observeStarted"),
-						timeout: 2500,
-						color: "success",
 						radius: "lg"
 					})
+
+					setTimeout(() => {
+						setIsSyncing(false)
+						setShowSuccessGlow(false)
+					}, 1000)
 				}
 			)
 		}
@@ -205,9 +150,21 @@ const Section: FC<SectionItem> = ({
 	}
 
 	useEffect(() => {
+		// Sync status with background on mount
+		chrome.runtime.sendMessage(
+			{ type: "sync_check_observe_status", payload: { id } },
+			(response) => {
+				if (response && typeof response.isObserving === "boolean") {
+					setIsObserving(response.isObserving)
+				}
+			}
+		)
+
 		const listener = (message: any) => {
 			if (message.type === "observe_sync_complete" && message.payload?.ruleId === id) {
 				if (!message.payload.error) {
+					setIsObserving(false)
+					setIsSyncing(false)
 					addToast({
 						title: t("autoSync"),
 						description: t("autoSyncSuccess"),
@@ -219,14 +176,16 @@ const Section: FC<SectionItem> = ({
 			}
 		}
 		chrome.runtime.onMessage.addListener(listener)
-		return () => {
-			chrome.runtime.onMessage.removeListener(listener)
-		}
-	}, [id, t])
+		return () => chrome.runtime.onMessage.removeListener(listener)
+	}, [id, t, setIsObserving])
 
 	return (
 		<motion.div
-			className="group relative rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition-all hover:border-emerald-500/20 hover:bg-white/[0.05] mb-4 overflow-hidden"
+			className={`group relative rounded-2xl border p-4 transition-all duration-500 mb-4 overflow-hidden ${
+				showSuccessGlow
+					? "border-emerald-500/50 bg-emerald-500/10 shadow-[0_0_20px_rgba(16,185,129,0.2)]"
+					: "border-white/10 bg-white/[0.03] hover:border-emerald-500/20 hover:bg-white/[0.05]"
+			}`}
 			initial={{ opacity: 0, y: 12 }}
 			animate={{ opacity: 1, y: 0 }}
 			exit={{ opacity: 0, scale: 0.95 }}
@@ -235,9 +194,9 @@ const Section: FC<SectionItem> = ({
 			{/* Status indicator */}
 			<div className="absolute top-4 right-4">
 				<div
-					className={`w-2 h-2 rounded-full ${
+					className={`w-2 h-2 rounded-full transition-all duration-300 ${
 						isObserving
-							? "bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]"
+							? "bg-amber-500 animate-pulse shadow-[0_0_8px_rgba(245,158,11,0.6)]"
 							: "bg-white/10"
 					}`}
 				/>
@@ -253,9 +212,7 @@ const Section: FC<SectionItem> = ({
 						type="text"
 						value={source}
 						disabled={isObserving}
-						onChange={(e) => {
-							onChange(id, "source", e.target.value)
-						}}
+						onChange={(e) => onChange(id, "source", e.target.value)}
 						placeholder={t("sourcePlaceholder")}
 						className="w-full bg-transparent border-none p-0 text-[13px] text-white/80 placeholder:text-white/20 focus:ring-0 font-mono truncate outline-none"
 					/>
@@ -271,9 +228,7 @@ const Section: FC<SectionItem> = ({
 						type="text"
 						value={target}
 						disabled={isObserving}
-						onChange={(e) => {
-							onChange(id, "target", e.target.value)
-						}}
+						onChange={(e) => onChange(id, "target", e.target.value)}
 						placeholder={t("targetPlaceholder")}
 						className="w-full bg-transparent border-none p-0 text-[13px] text-white/80 placeholder:text-white/20 focus:ring-0 font-mono text-right truncate outline-none"
 					/>
@@ -297,9 +252,7 @@ const Section: FC<SectionItem> = ({
 								{!isObserving && (
 									<button
 										type="button"
-										onClick={() => {
-											handleRemoveKey(key)
-										}}
+										onClick={() => handleRemoveKey(key)}
 										className="text-white/20 hover:text-red-400 transition-colors cursor-pointer"
 									>
 										×
@@ -313,14 +266,8 @@ const Section: FC<SectionItem> = ({
 							<input
 								type="text"
 								value={newKey}
-								onChange={(e) => {
-									setNewKey(e.target.value)
-								}}
-								onKeyDown={(e) => {
-									if (e.key === "Enter") {
-										handleAddKey()
-									}
-								}}
+								onChange={(e) => setNewKey(e.target.value)}
+								onKeyDown={(e) => e.key === "Enter" && handleAddKey()}
 								placeholder={t("addKey")}
 								className="bg-transparent border-none p-0 text-[11px] text-white/50 placeholder:text-white/20 focus:ring-0 outline-none min-w-15"
 							/>
@@ -340,56 +287,48 @@ const Section: FC<SectionItem> = ({
 			<div className="flex items-center gap-2 pt-3 border-t border-white/5">
 				<button
 					type="button"
-					onClick={handleSyncOnce}
-					disabled={isObserving || isSyncing}
-					className="flex items-center gap-2 rounded-xl px-4 py-2 text-[12px] font-bold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 disabled:opacity-50 transition-all duration-200 cursor-pointer active:scale-95"
-				>
-					<RefreshCwIcon className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
-					{isSyncing ? t("syncing") : t("syncNow")}
-				</button>
-
-				<button
-					type="button"
-					onClick={handleToggleObserve}
-					className={`flex items-center gap-2 rounded-xl px-4 py-2 text-[12px] font-bold transition-all duration-200 cursor-pointer active:scale-95 ${
+					onClick={handleSync}
+					className={`flex items-center gap-2 rounded-xl px-5 py-2.5 text-[12px] font-bold transition-all duration-300 cursor-pointer active:scale-95 shadow-lg ${
 						isObserving
-							? "text-amber-400 bg-amber-500/10 hover:bg-amber-500/20"
-							: "text-white/40 bg-white/5 hover:bg-white/10"
+							? "text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 shadow-amber-500/10"
+							: "text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 shadow-emerald-500/10"
 					}`}
 				>
-					{isObserving ? (
-						<>
-							<EyeIcon className="w-3.5 h-3.5" />
-							{t("isMonitoring")}
-						</>
-					) : (
-						<>
-							<EyeOffIcon className="w-3.5 h-3.5" />
-							{t("notMonitoring")}
-						</>
-					)}
+					<RefreshCwIcon
+						className={`w-3.5 h-3.5 ${isSyncing || isObserving ? "animate-spin" : ""}`}
+					/>
+					<span>
+						{isObserving
+							? t("stopSync") || "停止同步"
+							: isSyncing
+								? t("syncing")
+								: t("syncNow")}
+					</span>
 				</button>
 
 				<div className="flex-1" />
 
-				<Tooltip content={t("copyRule")}>
+				<Tooltip content={t("copyRule")} isDisabled={isObserving}>
 					<button
 						type="button"
-						onClick={() => {
-							onCopy(source, target, syncKeys)
-						}}
+						onClick={() => onCopy(source, target, syncKeys)}
 						className="flex items-center justify-center w-8 h-8 rounded-xl text-white/30 hover:text-white hover:bg-white/10 transition-all duration-200 cursor-pointer"
 					>
 						<CopyIcon className="w-3.5 h-3.5" />
 					</button>
 				</Tooltip>
 
-				<Tooltip content={t("deleteRule")}>
+				<Tooltip content={t("deleteRule")} isDisabled={isObserving}>
 					<button
 						type="button"
+						disabled={isObserving}
 						onClick={() => {
-							onDelete(id as string)
-							localStorage.removeItem(Observe_ID)
+							onDelete(id)
+							localStorage.removeItem(`sync_storage_observe_${id}`)
+							chrome.runtime.sendMessage({
+								type: "sync_observe_stop",
+								payload: { id }
+							})
 						}}
 						className="flex items-center justify-center w-8 h-8 rounded-xl text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200 cursor-pointer"
 					>

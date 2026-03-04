@@ -2,7 +2,6 @@ import { useLocalStorage } from "@uidotdev/usehooks"
 import { AnimatePresence, motion } from "framer-motion"
 import { AddIcon, EmptyIcon } from "@/components/icons"
 import { useI18n } from "@/lib/i18n"
-import type { SectionItem } from "./section"
 import Section from "./section"
 import Title from "./title"
 
@@ -39,12 +38,12 @@ const EmptyState = ({ onAdd }: { onAdd: () => void }) => {
 
 const Popup = () => {
 	const [sectionItems, setSectionItems] = useLocalStorage<
-		Omit<SectionItem, "onDelete" | "onChange" | "onCopy" | "index">[]
+		{ id: string; source: string; target: string; syncKeys: string[] }[]
 	>("__sync_storage_items_", [])
 
 	const handleAdd = () => {
-		const tempId = `temp-${Date.now()}-${Math.random()}`
-		setSectionItems((prev) => [...prev, { id: tempId, source: "", target: "", syncKeys: [] }])
+		const id = crypto.randomUUID()
+		setSectionItems((prev) => [...prev, { id, source: "", target: "", syncKeys: [] }])
 		const timer = setTimeout(() => {
 			document
 				.getElementById("sync-storage-container")
@@ -58,8 +57,8 @@ const Popup = () => {
 	}
 
 	const handleCopy = (source: string, target: string, syncKeys: string[]) => {
-		const tempId = `temp-${Date.now()}-${Math.random()}`
-		setSectionItems((prev) => [...prev, { id: tempId, source, target, syncKeys }])
+		const id = crypto.randomUUID()
+		setSectionItems((prev) => [...prev, { id, source, target, syncKeys }])
 		const timer = setTimeout(() => {
 			document
 				.getElementById("sync-storage-container")
@@ -86,27 +85,16 @@ const Popup = () => {
 									index={_i}
 									{...item}
 									onChange={(id, field, value) => {
-										if (typeof field === "number") {
-											// Replacing temporary id
-											setSectionItems((prev) =>
-												prev.map((it) =>
-													it.id === id
-														? { ...it, id: value as string }
-														: it
-												)
+										setSectionItems((prev) =>
+											prev.map((it) =>
+												it.id === id
+													? {
+															...it,
+															[field]: value
+														}
+													: it
 											)
-										} else {
-											setSectionItems((prev) =>
-												prev.map((it) =>
-													it.id === id
-														? {
-																...it,
-																[field]: value
-															}
-														: it
-												)
-											)
-										}
+										)
 									}}
 									onDelete={handleDel}
 									onCopy={handleCopy}

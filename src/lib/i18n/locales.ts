@@ -6,7 +6,7 @@ export const locales = {
 	"zh-CN": {
 		// 标题
 		title: "Sync Storage",
-		subtitle: "Synchronize storage data across sites",
+		subtitle: "跨站点同步存储数据",
 
 		// 空状态
 		emptyTitle: "暂无同步规则",
@@ -27,6 +27,7 @@ export const locales = {
 		// 按钮提示
 		syncNow: "同步",
 		syncing: "同步中...",
+		stopSync: "停止同步",
 		isMonitoring: "监听中",
 		notMonitoring: "未监听",
 		startObserve: "开启监听",
@@ -44,9 +45,9 @@ export const locales = {
 		invalidTargetUrl: "目标地址格式不正确，请输入有效的 URL（如 https://example.com）",
 		syncSuccess: "同步完成！",
 		syncFieldsNotFound: "同步失败，请检查「同步字段是否正确」且「源站是否已登录」！",
-		observeStopped: "已停止监听",
-		observeStarted: "监听已开启，源站storage数据将自动同步到目标站",
-		autoSyncSuccess: "检测到登录状态，已自动同步数据！",
+		observeStopped: "已停止同步",
+		observeStarted: "等待同步中，请前往源站登录...",
+		autoSyncSuccess: "同步完成！",
 		duplicateTaskError: "已有相同的任务执行中"
 	},
 	en: {
@@ -74,6 +75,7 @@ export const locales = {
 		// Button tooltips
 		syncNow: "Sync",
 		syncing: "Syncing...",
+		stopSync: "Stop Sync",
 		isMonitoring: "Monitoring",
 		notMonitoring: "Idle",
 		startObserve: "Start Watching",
@@ -92,9 +94,9 @@ export const locales = {
 		syncSuccess: "Sync completed!",
 		syncFieldsNotFound:
 			"Sync failed. Please check if sync keys are correct and source site is logged in!",
-		observeStopped: "Watching stopped",
-		observeStarted: "Watching started. Data will auto-sync to target site from source site",
-		autoSyncSuccess: "Login detected. Data has been auto-synced!",
+		observeStopped: "Sync stopped",
+		observeStarted: "Waiting for sync, please login to the source site...",
+		autoSyncSuccess: "Sync completed!",
 		duplicateTaskError: "A task with the same configuration is already running"
 	}
 } as const

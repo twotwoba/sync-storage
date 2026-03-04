@@ -25,7 +25,6 @@ chrome.runtime.onInstalled.addListener(({ reason }) => {
  * Tab updated event - detect tab open and navigation
  */
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-	// Only process when page load is complete
 	if (changeInfo.status !== "complete" || !tab.url) {
 		return
 	}
@@ -44,15 +43,13 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
  * Tab removed event - cleanup state
  */
 chrome.tabs.onRemoved.addListener((tabId) => {
-	for (const [ruleId, state] of observeStates) {
+	for (const state of Object.values(observeStates)) {
 		if (state.sourceTabId === tabId) {
 			state.sourceTabId = null
 			state.isSourceReady = false
-			console.log("[Observe] Source tab closed for rule:", ruleId)
 		}
 		if (state.targetTabId === tabId) {
 			state.targetTabId = null
-			console.log("[Observe] Target tab closed for rule:", ruleId)
 		}
 	}
 })
@@ -62,29 +59,23 @@ chrome.tabs.onRemoved.addListener((tabId) => {
  */
 chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
 	try {
-		// Sync once
+		// Scenario A & B entry point: sync once
 		if (message.type === "sync_once") {
 			;(async () => {
 				const { source, target, keys } = message.payload
 				const sourceTabId = await checkWhetherTabExists(source)
 				const targetTabId = await checkWhetherTabExists(target)
+
 				const res = await injectSyncOnceScript(sourceTabId, targetTabId, keys)
 				sendResponse(res)
 			})()
 			return true
 		}
 
-		// Start observing
+		// Start background observing (Scenario B - Wait for sync)
 		if (message.type === "sync_observe_start") {
 			const { id, source, target, keys } = message.payload
 			;(async () => {
-				// Check if there's already an active rule with the same source and target URLs
-				for (const rule of activeRules.values()) {
-					if (rule.sourceUrl === source && rule.targetUrl === target) {
-						sendResponse({ error: true, msgKey: "duplicateTaskError" })
-						return
-					}
-				}
 				await startObserve({
 					id,
 					sourceUrl: source,
@@ -92,17 +83,17 @@ chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
 					keys,
 					enabled: true
 				})
-				sendResponse({ error: false, msgKey: "observeStarted" })
+				sendResponse({ error: false })
 			})()
 			return true
 		}
 
-		// Stop observing
+		// Stop background observing
 		if (message.type === "sync_observe_stop") {
 			const { id } = message.payload
 			;(async () => {
 				await stopObserve(id)
-				sendResponse({ error: false, msgKey: "observeStopped" })
+				sendResponse({ error: false })
 			})()
 			return true
 		}
@@ -111,33 +102,30 @@ chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
 		if (message.type === "observe_source_status") {
 			const { ruleId, isReady } = message.payload
 			const state = observeStates.get(ruleId)
-			if (state) {
-				const wasReady = state.isSourceReady
-				state.isSourceReady = isReady
-				// If changed from not ready to ready, try sync
-				if (!wasReady && isReady) {
-					console.log("[Observe] Source became ready for rule:", ruleId)
-					trySync(ruleId)
-				}
+			const rule = activeRules.get(ruleId)
+
+			if (!rule || !state) {
+				return true
+			}
+
+			const wasReady = state.isSourceReady
+			state.isSourceReady = isReady
+
+			if (!wasReady && isReady) {
+				trySync(ruleId).then((result) => {
+					if (result && !result.error) {
+						// Auto cleanup after background sync completes
+						stopObserve(ruleId)
+					}
+				})
 			}
 			return true
 		}
 
-		// Query observe status
-		if (message.type === "sync_observe_status") {
+		// Check current observe status
+		if (message.type === "sync_check_observe_status") {
 			const { id } = message.payload
-			const isActive = activeRules.has(id)
-			const state = observeStates.get(id)
-			sendResponse({
-				isActive,
-				state: state
-					? {
-							hasSource: !!state.sourceTabId,
-							hasTarget: !!state.targetTabId,
-							isSourceReady: state.isSourceReady
-						}
-					: null
-			})
+			sendResponse({ isObserving: activeRules.has(id) })
 			return true
 		}
 

@@ -44,7 +44,5 @@ export function isUrlMatch(tabUrl: string | undefined, ruleUrl: string): boolean
 	}
 	const tabOrigin = getUrlOrigin(tabUrl)
 	const ruleOrigin = getUrlOrigin(ruleUrl)
-	console.log("🔥 [DEBUG] ---> tabOrigin: ", tabOrigin)
-	console.log("🔥 [DEBUG] ---> ruleOrigin: ", ruleOrigin)
 	return tabOrigin === ruleOrigin
 }
