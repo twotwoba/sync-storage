@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "framer-motion"
 import { AddIcon, EmptyIcon } from "@/components/icons"
 import { useI18n } from "@/lib/i18n"
 import Section from "./section"
-import Title from "./title"
+import Head from "./head"
 
 const EmptyState = ({ onAdd }: { onAdd: () => void }) => {
 	const { t } = useI18n()
@@ -71,7 +71,7 @@ const Popup = () => {
 
 	return (
 		<div className="flex flex-col min-h-full">
-			<Title itemCount={sectionItems.length} onAdd={handleAdd} />
+			<Head itemCount={sectionItems.length} onAdd={handleAdd} />
 
 			<div className="flex-1 px-4 py-2">
 				{!hasItems ? (

@@ -8,6 +8,8 @@ import App from "./App"
  */
 createRoot(document.getElementById("_sync_storage_popup_")!).render(
 	<StrictMode>
-		<App />
+		<div className="overflow-hidden">
+			<App />
+		</div>
 	</StrictMode>
 )
