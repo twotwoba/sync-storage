@@ -68,7 +68,9 @@ export async function stopObserve(ruleId: string) {
 async function checkExistingTabs(rule: ObserveRule) {
 	const tabs = await chrome.tabs.query({})
 	const state = observeStates.get(rule.id)
-	if (!state) return
+	if (!state) {
+		return
+	}
 
 	for (const tab of tabs) {
 		if (tab.id && tab.url) {
@@ -88,7 +90,9 @@ async function checkExistingTabs(rule: ObserveRule) {
 export async function onSourceTabReady(ruleId: string, tabId: number) {
 	const state = observeStates.get(ruleId)
 	const rule = activeRules.get(ruleId)
-	if (!state || !rule) return
+	if (!state || !rule) {
+		return
+	}
 
 	// If new source tab, cleanup old detector
 	if (state.sourceTabId && state.sourceTabId !== tabId) {
@@ -107,7 +111,9 @@ export async function onSourceTabReady(ruleId: string, tabId: number) {
  */
 export function onTargetTabReady(ruleId: string, tabId: number) {
 	const state = observeStates.get(ruleId)
-	if (!state) return
+	if (!state) {
+		return
+	}
 
 	state.targetTabId = tabId
 	console.log("[Observe] Target tab ready:", tabId, "for rule:", ruleId)
@@ -122,7 +128,9 @@ export function onTargetTabReady(ruleId: string, tabId: number) {
 export async function trySync(ruleId: string) {
 	const state = observeStates.get(ruleId)
 	const rule = activeRules.get(ruleId)
-	if (!state || !rule) return
+	if (!state || !rule) {
+		return
+	}
 
 	// Check all conditions
 	if (!state.sourceTabId || !state.targetTabId || !state.isSourceReady) {

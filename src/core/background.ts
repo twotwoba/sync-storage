@@ -26,7 +26,9 @@ chrome.runtime.onInstalled.addListener(({ reason }) => {
  */
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 	// Only process when page load is complete
-	if (changeInfo.status !== "complete" || !tab.url) return
+	if (changeInfo.status !== "complete" || !tab.url) {
+		return
+	}
 
 	for (const [ruleId, rule] of activeRules) {
 		if (isUrlMatch(tab.url, rule.sourceUrl)) {
@@ -77,7 +79,7 @@ chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
 			const { id, source, target, keys } = message.payload
 			;(async () => {
 				// Check if there's already an active rule with the same source and target URLs
-				for (const [_, rule] of activeRules) {
+				for (const rule of activeRules.values()) {
 					if (rule.sourceUrl === source && rule.targetUrl === target) {
 						sendResponse({ error: true, msgKey: "duplicateTaskError" })
 						return
