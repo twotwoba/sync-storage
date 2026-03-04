@@ -40,10 +40,6 @@ Here is what it can do:
 
 **_I'm very happy to see you submit a PR to make it better._**
 
-## Screen shot
-
-![sync-storage-main](./sync-storage-main-fill.png)
-
 ## License
 
 This repository is licensed under the [MIT](LICENSE)
