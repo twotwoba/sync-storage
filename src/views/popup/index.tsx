@@ -15,13 +15,13 @@ const EmptyState = ({ onAdd }: { onAdd: () => void }) => {
 			animate={{ opacity: 1, y: 0 }}
 			transition={{ duration: 0.4 }}
 		>
-			<div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-6 shadow-xl">
-				<EmptyIcon className="text-white/20 w-8 h-8" />
+			<div className="w-16 h-16 rounded-2xl bg-secondary border border-border flex items-center justify-center mb-6 shadow-xl">
+				<EmptyIcon className="text-muted-foreground w-8 h-8" />
 			</div>
-			<h3 className="text-white/80 text-lg font-bold mb-2 tracking-tight">
+			<h3 className="text-foreground text-lg font-bold mb-2 tracking-tight">
 				{t("emptyTitle")}
 			</h3>
-			<p className="text-white/40 text-[13px] text-center mb-8 max-w-[320px] leading-relaxed">
+			<p className="text-muted-foreground text-[13px] text-center mb-8 max-w-[320px] leading-relaxed">
 				{t("emptyDesc")}
 			</p>
 			<button

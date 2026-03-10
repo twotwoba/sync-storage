@@ -49,7 +49,11 @@ export const locales = {
 		observeStopped: "已停止同步",
 		observeStarted: "等待同步中，请前往源站登录...",
 		autoSyncSuccess: "同步完成！",
-		duplicateTaskError: "已有相同的任务执行中"
+		duplicateTaskError: "已有相同的任务执行中",
+
+		// 主题切换
+		switchToDark: "切换到暗黑模式",
+		switchToLight: "切换到明亮模式"
 	},
 	en: {
 		// Title
@@ -98,7 +102,11 @@ export const locales = {
 		observeStopped: "Sync stopped",
 		observeStarted: "Waiting for sync, please login to the source site...",
 		autoSyncSuccess: "Sync completed!",
-		duplicateTaskError: "A task with the same configuration is already running"
+		duplicateTaskError: "A task with the same configuration is already running",
+
+		// Theme toggle
+		switchToDark: "Switch to dark mode",
+		switchToLight: "Switch to light mode"
 	}
 } as const
 
