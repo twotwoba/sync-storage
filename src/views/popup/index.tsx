@@ -1,9 +1,12 @@
 import { useLocalStorage } from "@uidotdev/usehooks"
 import { AnimatePresence, motion } from "framer-motion"
+import { useEffect } from "react"
 import { AddIcon, EmptyIcon } from "@/components/icons"
 import { useI18n } from "@/lib/i18n"
 import Section from "./section"
 import Head from "./head"
+
+type SectionItemData = { id: string; source: string; targets: string[]; syncKeys: string[] }
 
 const EmptyState = ({ onAdd }: { onAdd: () => void }) => {
 	const { t } = useI18n()
@@ -36,14 +39,42 @@ const EmptyState = ({ onAdd }: { onAdd: () => void }) => {
 	)
 }
 
+// Migrate old data format: target (string) -> targets (string[])
+function migrateItems(items: any[]): SectionItemData[] {
+	return items.map((item) => {
+		if (typeof item.target === "string") {
+			const targets = item.target ? [item.target] : []
+			return { id: item.id, source: item.source || "", targets, syncKeys: item.syncKeys || [] }
+		}
+		return item as SectionItemData
+	})
+}
+
 const Popup = () => {
-	const [sectionItems, setSectionItems] = useLocalStorage<
-		{ id: string; source: string; target: string; syncKeys: string[] }[]
-	>("__sync_storage_items_", [])
+	const [sectionItems, setSectionItems] = useLocalStorage<SectionItemData[]>(
+		"__sync_storage_items_",
+		[]
+	)
+
+	// One-time migration from old format
+	useEffect(() => {
+		const raw = localStorage.getItem("__sync_storage_items_")
+		if (!raw) return
+		try {
+			const parsed = JSON.parse(raw)
+			if (!Array.isArray(parsed)) return
+			const needsMigration = parsed.some((item) => typeof item.target === "string")
+			if (needsMigration) {
+				setSectionItems(migrateItems(parsed))
+			}
+		} catch {
+			// ignore
+		}
+	}, [setSectionItems])
 
 	const handleAdd = () => {
 		const id = crypto.randomUUID()
-		setSectionItems((prev) => [...prev, { id, source: "", target: "", syncKeys: [] }])
+		setSectionItems((prev) => [...prev, { id, source: "", targets: [], syncKeys: [] }])
 		const timer = setTimeout(() => {
 			document
 				.getElementById("sync-storage-container")
@@ -56,9 +87,9 @@ const Popup = () => {
 		setSectionItems((prev) => prev.filter((item) => item.id !== id))
 	}
 
-	const handleCopy = (source: string, target: string, syncKeys: string[]) => {
+	const handleCopy = (source: string, targets: string[], syncKeys: string[]) => {
 		const id = crypto.randomUUID()
-		setSectionItems((prev) => [...prev, { id, source, target, syncKeys }])
+		setSectionItems((prev) => [...prev, { id, source, targets, syncKeys }])
 		const timer = setTimeout(() => {
 			document
 				.getElementById("sync-storage-container")

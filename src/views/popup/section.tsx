@@ -3,7 +3,6 @@ import { useLocalStorage } from "@uidotdev/usehooks"
 import { AnimatePresence, motion } from "framer-motion"
 import { type FC, useEffect, useState, useCallback } from "react"
 import {
-	ArrowRightIcon,
 	CopyIcon,
 	KeyIcon,
 	PlusIcon,
@@ -17,22 +16,26 @@ export type SectionItem = {
 	index: number
 
 	source: string
-	target: string
+	targets: string[]
 	syncKeys: string[]
 
-	onChange: (id: string, field: "source" | "target" | "syncKeys", value: any) => void
+	onChange: (id: string, field: "source" | "targets" | "syncKeys", value: any) => void
 	onDelete: (id: string) => void
-	onCopy: (source: string, target: string, syncKeys: string[]) => void
+	onCopy: (source: string, targets: string[], syncKeys: string[]) => void
 }
 
-const Section: FC<SectionItem> = ({ id, source, target, syncKeys, onChange, onDelete, onCopy }) => {
+const Section: FC<SectionItem> = ({ id, source, targets, syncKeys, onChange, onDelete, onCopy }) => {
 	const { t } = useI18n()
 	const [newKey, setNewKey] = useState("")
-	const [isSyncing, setIsSyncing] = useState(false)
+	// Track syncing state per target index
+	const [syncingTargetIndex, setSyncingTargetIndex] = useState<number | null>(null)
 	const [showSuccessGlow, setShowSuccessGlow] = useState(false)
 
-	// Observe state from background
-	const [isObserving, setIsObserving] = useLocalStorage(`sync_storage_observe_${id}`, false)
+	// Observe states per target (keyed by ruleId which is `${id}_${targetIndex}`)
+	const [observeMap, setObserveMap] = useLocalStorage<Record<string, boolean>>(
+		`sync_storage_observe_${id}`,
+		{}
+	)
 
 	const isValidUrl = (url: string) => {
 		try {
@@ -43,8 +46,13 @@ const Section: FC<SectionItem> = ({ id, source, target, syncKeys, onChange, onDe
 		}
 	}
 
-	const validate = useCallback(() => {
-		if (!source.trim() || !target.trim() || !syncKeys.length) {
+	const getObserveKey = (targetIndex: number) => `${id}_${targetIndex}`
+
+	const isObserving = Object.values(observeMap).some(Boolean)
+
+	const validateForTarget = useCallback((targetIndex: number) => {
+		const targetUrl = targets[targetIndex]
+		if (!source.trim() || !targetUrl?.trim() || !syncKeys.length) {
 			addToast({
 				title: t("tip"),
 				description: t("emptyFieldsError"),
@@ -56,10 +64,22 @@ const Section: FC<SectionItem> = ({ id, source, target, syncKeys, onChange, onDe
 			return false
 		}
 
-		if (!isValidUrl(source) || !isValidUrl(target)) {
+		if (!isValidUrl(source)) {
 			addToast({
 				title: t("tip"),
-				description: t(!isValidUrl(source) ? "invalidSourceUrl" : "invalidTargetUrl"),
+				description: t("invalidSourceUrl"),
+				timeout: 2000,
+				color: "warning",
+				radius: "lg",
+				shouldShowTimeoutProgress: true
+			})
+			return false
+		}
+
+		if (!isValidUrl(targetUrl)) {
+			addToast({
+				title: t("tip"),
+				description: t("invalidTargetUrl"),
 				timeout: 2000,
 				color: "warning",
 				radius: "lg",
@@ -69,27 +89,28 @@ const Section: FC<SectionItem> = ({ id, source, target, syncKeys, onChange, onDe
 		}
 
 		return true
-	}, [source, target, syncKeys, t])
+	}, [source, targets, syncKeys, t])
 
-	const handleSync = () => {
-		if (!validate()) {
-			return
-		}
+	const handleSyncTarget = (targetIndex: number) => {
+		if (!validateForTarget(targetIndex)) return
 
-		if (isObserving) {
-			// Stop Syncing (Scenario B - Stop)
+		const observeKey = getObserveKey(targetIndex)
+		const target = targets[targetIndex]
+
+		if (observeMap[observeKey]) {
+			// Stop observing this target
 			chrome.runtime.sendMessage(
-				{ type: "sync_observe_stop", payload: { id } },
+				{ type: "sync_observe_stop", payload: { id: observeKey } },
 				(response) => {
 					if (response && !response.error) {
-						setIsObserving(false)
-						setIsSyncing(false)
+						setObserveMap((prev) => ({ ...prev, [observeKey]: false }))
+						setSyncingTargetIndex(null)
 					}
 				}
 			)
 		} else {
-			// Start Syncing
-			setIsSyncing(true)
+			// Start sync for this target
+			setSyncingTargetIndex(targetIndex)
 			chrome.runtime.sendMessage(
 				{
 					type: "sync_once",
@@ -98,12 +119,12 @@ const Section: FC<SectionItem> = ({ id, source, target, syncKeys, onChange, onDe
 				(response: { error: boolean; msgKey: string }) => {
 					if (response?.error) {
 						if (response.msgKey === "syncFieldsNotFound") {
-							// Scenario B: Source not ready, start background monitoring
-							setIsObserving(true)
-							setIsSyncing(false)
+							// Start observe for this target
+							setObserveMap((prev) => ({ ...prev, [observeKey]: true }))
+							setSyncingTargetIndex(null)
 							chrome.runtime.sendMessage({
 								type: "sync_observe_start",
-								payload: { id, source, target, keys: syncKeys }
+								payload: { id: observeKey, source, target, keys: syncKeys }
 							})
 							addToast({
 								title: t("tip"),
@@ -113,7 +134,7 @@ const Section: FC<SectionItem> = ({ id, source, target, syncKeys, onChange, onDe
 								radius: "lg"
 							})
 						} else {
-							setIsSyncing(false)
+							setSyncingTargetIndex(null)
 							addToast({
 								title: t("tip"),
 								description: t(response.msgKey),
@@ -125,7 +146,7 @@ const Section: FC<SectionItem> = ({ id, source, target, syncKeys, onChange, onDe
 						return
 					}
 
-					// Scenario A: Instant Sync Success
+					// Success
 					setShowSuccessGlow(true)
 					addToast({
 						title: t("success"),
@@ -136,12 +157,39 @@ const Section: FC<SectionItem> = ({ id, source, target, syncKeys, onChange, onDe
 					})
 
 					setTimeout(() => {
-						setIsSyncing(false)
+						setSyncingTargetIndex(null)
 						setShowSuccessGlow(false)
 					}, 1000)
 				}
 			)
 		}
+	}
+
+	const handleAddTarget = () => {
+		onChange(id, "targets", [...targets, ""])
+	}
+
+	const handleRemoveTarget = (targetIndex: number) => {
+		const observeKey = getObserveKey(targetIndex)
+		// Stop any active observe for this target
+		if (observeMap[observeKey]) {
+			chrome.runtime.sendMessage({
+				type: "sync_observe_stop",
+				payload: { id: observeKey }
+			})
+		}
+		// Remove from targets array and clean up observeMap
+		const newTargets = targets.filter((_, i) => i !== targetIndex)
+		onChange(id, "targets", newTargets)
+		const newObserveMap = { ...observeMap }
+		delete newObserveMap[observeKey]
+		setObserveMap(newObserveMap)
+	}
+
+	const handleTargetChange = (targetIndex: number, value: string) => {
+		const newTargets = [...targets]
+		newTargets[targetIndex] = value
+		onChange(id, "targets", newTargets)
 	}
 
 	const handleAddKey = () => {
@@ -161,21 +209,27 @@ const Section: FC<SectionItem> = ({ id, source, target, syncKeys, onChange, onDe
 	}
 
 	useEffect(() => {
-		// Sync status with background on mount
-		chrome.runtime.sendMessage(
-			{ type: "sync_check_observe_status", payload: { id } },
-			(response) => {
-				if (response && typeof response.isObserving === "boolean") {
-					setIsObserving(response.isObserving)
+		// Check observe status for all targets on mount
+		targets.forEach((_, targetIndex) => {
+			const observeKey = getObserveKey(targetIndex)
+			chrome.runtime.sendMessage(
+				{ type: "sync_check_observe_status", payload: { id: observeKey } },
+				(response) => {
+					if (response && typeof response.isObserving === "boolean") {
+						setObserveMap((prev) => ({ ...prev, [observeKey]: response.isObserving }))
+					}
 				}
-			}
-		)
+			)
+		})
 
 		const listener = (message: any) => {
-			if (message.type === "observe_sync_complete" && message.payload?.ruleId === id) {
-				if (!message.payload.error) {
-					setIsObserving(false)
-					setIsSyncing(false)
+			if (message.type === "observe_sync_complete" && message.payload?.ruleId) {
+				const ruleId = message.payload.ruleId
+				// Check if this ruleId matches any of our target observeKeys
+				const matchingIndex = targets.findIndex((_, i) => getObserveKey(i) === ruleId)
+				if (matchingIndex !== -1 && !message.payload.error) {
+					setObserveMap((prev) => ({ ...prev, [ruleId]: false }))
+					setSyncingTargetIndex(null)
 					addToast({
 						title: t("autoSync"),
 						description: t("autoSyncSuccess"),
@@ -188,7 +242,22 @@ const Section: FC<SectionItem> = ({ id, source, target, syncKeys, onChange, onDe
 		}
 		chrome.runtime.onMessage.addListener(listener)
 		return () => chrome.runtime.onMessage.removeListener(listener)
-	}, [id, t, setIsObserving])
+	}, [id, targets, t, setObserveMap])
+
+	// Cleanup all observes when section is deleted
+	useEffect(() => {
+		return () => {
+			Object.entries(observeMap).forEach(([key, observing]) => {
+				if (observing) {
+					chrome.runtime.sendMessage({
+						type: "sync_observe_stop",
+						payload: { id: key }
+					})
+				}
+			})
+		}
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [])
 
 	return (
 		<motion.div
@@ -213,41 +282,102 @@ const Section: FC<SectionItem> = ({ id, source, target, syncKeys, onChange, onDe
 				/>
 			</div>
 
-			{/* URL Row */}
-			<div className="flex items-center gap-3 mb-5 pr-6">
-				<div className="flex-1 min-w-0">
-					<p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold">
-						{t("sourceLabel")}
+			{/* Source */}
+			<div className="mb-4 pr-6">
+				<p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold">
+					{t("sourceLabel")}
+				</p>
+				<input
+					type="text"
+					value={source}
+					disabled={isObserving}
+					onChange={(e) => onChange(id, "source", e.target.value)}
+					placeholder={t("sourcePlaceholder")}
+					className="w-full bg-transparent border border-border rounded-lg px-3 py-2 text-[13px] text-foreground placeholder:text-muted-foreground focus:ring-0 font-mono truncate outline-none focus:border-emerald-500/30 transition-colors"
+				/>
+			</div>
+
+			{/* Targets */}
+			<div className="mb-4">
+				<div className="flex items-center justify-between mb-2">
+					<p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">
+						{t("targetsLabel")}
 					</p>
-					<input
-						type="text"
-						value={source}
-						disabled={isObserving}
-						onChange={(e) => onChange(id, "source", e.target.value)}
-						placeholder={t("sourcePlaceholder")}
-						className="w-full bg-transparent border-none p-0 text-[13px] text-foreground placeholder:text-muted-foreground focus:ring-0 font-mono truncate outline-none"
-					/>
+					{!isObserving && (
+						<button
+							type="button"
+							onClick={handleAddTarget}
+							className="flex items-center gap-1 text-[11px] text-emerald-500 hover:text-emerald-400 transition-colors cursor-pointer"
+						>
+							<PlusIcon className="w-3 h-3" />
+							<span>{t("addTarget")}</span>
+						</button>
+					)}
 				</div>
-				<div className="pt-4 flex-shrink-0">
-					<ArrowRightIcon className="w-4 h-4 text-muted-foreground" />
-				</div>
-				<div className="flex-1 min-w-0 text-right">
-					<p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 font-bold">
-						{t("targetLabel")}
-					</p>
-					<input
-						type="text"
-						value={target}
-						disabled={isObserving}
-						onChange={(e) => onChange(id, "target", e.target.value)}
-						placeholder={t("targetPlaceholder")}
-						className="w-full bg-transparent border-none p-0 text-[13px] text-foreground placeholder:text-muted-foreground focus:ring-0 font-mono text-right truncate outline-none"
-					/>
+				<div className="space-y-2">
+					<AnimatePresence initial={false}>
+						{targets.map((targetUrl, targetIndex) => {
+							const observeKey = getObserveKey(targetIndex)
+							const isTargetSyncing = syncingTargetIndex === targetIndex
+							const isTargetObserving = observeMap[observeKey] || false
+
+							return (
+								<motion.div
+									key={targetIndex}
+									initial={{ opacity: 0, height: 0 }}
+									animate={{ opacity: 1, height: "auto" }}
+									exit={{ opacity: 0, height: 0 }}
+									className="flex items-center gap-2"
+								>
+									<span className="text-[11px] text-muted-foreground shrink-0 w-4 text-right">
+										{targetIndex + 1}.
+									</span>
+									<input
+										type="text"
+										value={targetUrl}
+										disabled={isTargetObserving}
+										onChange={(e) => handleTargetChange(targetIndex, e.target.value)}
+										placeholder={t("targetPlaceholder")}
+										className="flex-1 min-w-0 bg-transparent border border-border rounded-lg px-3 py-2 text-[13px] text-foreground placeholder:text-muted-foreground focus:ring-0 font-mono truncate outline-none focus:border-emerald-500/30 transition-colors"
+									/>
+									<button
+										type="button"
+										onClick={() => handleSyncTarget(targetIndex)}
+										className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-[11px] font-bold transition-all duration-300 cursor-pointer active:scale-95 whitespace-nowrap ${
+											isTargetObserving
+												? "text-amber-400 bg-amber-500/10 hover:bg-amber-500/20"
+												: "text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20"
+										}`}
+									>
+										<RefreshCwIcon
+											className={`w-3 h-3 ${isTargetSyncing || isTargetObserving ? "animate-spin" : ""}`}
+										/>
+										<span>
+											{isTargetObserving
+												? t("stopSync")
+												: isTargetSyncing
+													? t("syncing")
+													: t("syncNow")}
+										</span>
+									</button>
+									{!isTargetObserving && targets.length > 1 && (
+										<button
+											type="button"
+											onClick={() => handleRemoveTarget(targetIndex)}
+											className="flex items-center justify-center w-7 h-7 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-all duration-200 cursor-pointer"
+										>
+											×
+										</button>
+									)}
+								</motion.div>
+							)
+						})}
+					</AnimatePresence>
 				</div>
 			</div>
 
 			{/* Keys Chips Row */}
-			<div className="flex items-start gap-2 mb-5">
+			<div className="flex items-start gap-2 mb-4">
 				<KeyIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-1.5" />
 				<div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
 					<AnimatePresence>
@@ -296,33 +426,12 @@ const Section: FC<SectionItem> = ({ id, source, target, syncKeys, onChange, onDe
 
 			{/* Actions Row */}
 			<div className="flex items-center gap-2 pt-3 border-t border-border">
-				<button
-					type="button"
-					onClick={handleSync}
-					className={`flex items-center gap-2 rounded-xl px-5 py-2.5 text-[12px] font-bold transition-all duration-300 cursor-pointer active:scale-95 shadow-lg ${
-						isObserving
-							? "text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 shadow-amber-500/10"
-							: "text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 shadow-emerald-500/10"
-					}`}
-				>
-					<RefreshCwIcon
-						className={`w-3.5 h-3.5 ${isSyncing || isObserving ? "animate-spin" : ""}`}
-					/>
-					<span>
-						{isObserving
-							? t("stopSync") || "停止同步"
-							: isSyncing
-								? t("syncing")
-								: t("syncNow")}
-					</span>
-				</button>
-
 				<div className="flex-1" />
 
 				<Tooltip content={t("copyRule")} isDisabled={isObserving}>
 					<button
 						type="button"
-						onClick={() => onCopy(source, target, syncKeys)}
+						onClick={() => onCopy(source, targets, syncKeys)}
 						className="flex items-center justify-center w-8 h-8 rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent transition-all duration-200 cursor-pointer"
 					>
 						<CopyIcon className="w-3.5 h-3.5" />
@@ -336,9 +445,15 @@ const Section: FC<SectionItem> = ({ id, source, target, syncKeys, onChange, onDe
 						onClick={() => {
 							onDelete(id)
 							localStorage.removeItem(`sync_storage_observe_${id}`)
-							chrome.runtime.sendMessage({
-								type: "sync_observe_stop",
-								payload: { id }
+							// Stop all observes for all targets
+							targets.forEach((_, targetIndex) => {
+								const observeKey = getObserveKey(targetIndex)
+								if (observeMap[observeKey]) {
+									chrome.runtime.sendMessage({
+										type: "sync_observe_stop",
+										payload: { id: observeKey }
+									})
+								}
 							})
 						}}
 						className="flex items-center justify-center w-8 h-8 rounded-xl text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-all duration-200 cursor-pointer"
