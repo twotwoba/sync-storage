@@ -1,6 +1,6 @@
 {
 	"name": "sync-storage",
-	"version": "2.1.0",
+	"version": "2.2.0",
 	"description": "A Chrome Extension for syncing storage across tabs, support LocalStorage,SessionStorage,Cookie",
 	"license": "MIT",
 	"author": {
