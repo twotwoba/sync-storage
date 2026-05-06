@@ -48,6 +48,7 @@ export const locales = {
 		invalidTargetUrl: "目标地址格式不正确，请输入有效的 URL（如 https://example.com）",
 		syncSuccess: "同步完成！",
 		syncFieldsNotFound: "同步失败，请检查「同步字段是否正确」且「源站是否已登录」！",
+		syncFailed: "同步失败，请重试",
 		observeStopped: "已停止同步",
 		observeStarted: "等待同步中，请前往源站登录...",
 		autoSyncSuccess: "同步完成！",
@@ -103,6 +104,7 @@ export const locales = {
 		syncSuccess: "Sync completed!",
 		syncFieldsNotFound:
 			"Sync failed. Please check if sync keys are correct and source site is logged in!",
+		syncFailed: "Sync failed, please try again",
 		observeStopped: "Sync stopped",
 		observeStarted: "Waiting for sync, please login to the source site...",
 		autoSyncSuccess: "Sync completed!",

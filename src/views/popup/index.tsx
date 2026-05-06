@@ -74,7 +74,7 @@ const Popup = () => {
 
 	const handleAdd = () => {
 		const id = crypto.randomUUID()
-		setSectionItems((prev) => [...prev, { id, source: "", targets: [], syncKeys: [] }])
+		setSectionItems((prev) => [...prev, { id, source: "", targets: [""], syncKeys: [] }])
 		const timer = setTimeout(() => {
 			document
 				.getElementById("sync-storage-container")

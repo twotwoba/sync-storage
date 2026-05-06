@@ -71,7 +71,7 @@ chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
 					sendResponse(res)
 				} catch (error) {
 					console.error("Sync once error:", error)
-					sendResponse({ error: true, msgKey: String(error) })
+					sendResponse({ error: true, msgKey: "syncFailed" })
 				}
 			})()
 			return true

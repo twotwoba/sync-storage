@@ -29,7 +29,7 @@ export default defineManifest({
 	content_scripts: [
 		{
 			matches: ["<all_urls>"],
-			js: ["src/core/content-script.tsx"],
+			js: ["src/core/content-script.ts"],
 			run_at: "document_start"
 		}
 	],

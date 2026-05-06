@@ -116,10 +116,22 @@ const Section: FC<SectionItem> = ({ id, source, targets, syncKeys, onChange, onD
 					type: "sync_once",
 					payload: { source, target, keys: syncKeys }
 				},
-				(response: { error: boolean; msgKey: string }) => {
-					if (response?.error) {
+				(response: { error: boolean; msgKey: string } | undefined) => {
+					if (!response) {
+						setSyncingTargetIndex(null)
+						addToast({
+							title: t("tip"),
+							description: t("syncFailed"),
+							timeout: 3000,
+							color: "danger",
+							radius: "lg"
+						})
+						return
+					}
+
+					if (response.error) {
 						if (response.msgKey === "syncFieldsNotFound") {
-							// Start observe for this target
+							// Source has no data yet — enter observe mode
 							setObserveMap((prev) => ({ ...prev, [observeKey]: true }))
 							setSyncingTargetIndex(null)
 							chrome.runtime.sendMessage({
@@ -137,7 +149,7 @@ const Section: FC<SectionItem> = ({ id, source, targets, syncKeys, onChange, onD
 							setSyncingTargetIndex(null)
 							addToast({
 								title: t("tip"),
-								description: t(response.msgKey),
+								description: t(response.msgKey) || t("syncFailed"),
 								timeout: 3000,
 								color: "danger",
 								radius: "lg"
@@ -170,19 +182,54 @@ const Section: FC<SectionItem> = ({ id, source, targets, syncKeys, onChange, onD
 	}
 
 	const handleRemoveTarget = (targetIndex: number) => {
-		const observeKey = getObserveKey(targetIndex)
-		// Stop any active observe for this target
-		if (observeMap[observeKey]) {
+		// Stop observe for the removed target
+		const removedKey = getObserveKey(targetIndex)
+		if (observeMap[removedKey]) {
 			chrome.runtime.sendMessage({
 				type: "sync_observe_stop",
-				payload: { id: observeKey }
+				payload: { id: removedKey }
 			})
 		}
-		// Remove from targets array and clean up observeMap
+
+		// Stop observes for targets after the removed one (their indices will shift)
+		for (let i = targetIndex + 1; i < targets.length; i++) {
+			const oldKey = getObserveKey(i)
+			if (observeMap[oldKey]) {
+				chrome.runtime.sendMessage({
+					type: "sync_observe_stop",
+					payload: { id: oldKey }
+				})
+			}
+		}
+
+		// Remove from targets array
 		const newTargets = targets.filter((_, i) => i !== targetIndex)
 		onChange(id, "targets", newTargets)
-		const newObserveMap = { ...observeMap }
-		delete newObserveMap[observeKey]
+
+		// Rebuild observeMap with corrected indices
+		const newObserveMap: Record<string, boolean> = {}
+		for (let i = 0; i < newTargets.length; i++) {
+			if (i < targetIndex) {
+				const oldKey = getObserveKey(i)
+				if (observeMap[oldKey]) newObserveMap[getObserveKey(i)] = true
+			} else {
+				// After removed target: old index was i+1, now i
+				const oldKey = getObserveKey(i + 1)
+				if (observeMap[oldKey]) {
+					newObserveMap[getObserveKey(i)] = true
+					// Restart observe with new key
+					chrome.runtime.sendMessage({
+						type: "sync_observe_start",
+						payload: {
+							id: getObserveKey(i),
+							source,
+							target: newTargets[i],
+							keys: syncKeys
+						}
+					})
+				}
+			}
+		}
 		setObserveMap(newObserveMap)
 	}
 
@@ -225,18 +272,30 @@ const Section: FC<SectionItem> = ({ id, source, targets, syncKeys, onChange, onD
 		const listener = (message: any) => {
 			if (message.type === "observe_sync_complete" && message.payload?.ruleId) {
 				const ruleId = message.payload.ruleId
-				// Check if this ruleId matches any of our target observeKeys
 				const matchingIndex = targets.findIndex((_, i) => getObserveKey(i) === ruleId)
-				if (matchingIndex !== -1 && !message.payload.error) {
-					setObserveMap((prev) => ({ ...prev, [ruleId]: false }))
-					setSyncingTargetIndex(null)
-					addToast({
-						title: t("autoSync"),
-						description: t("autoSyncSuccess"),
-						timeout: 3000,
-						color: "success",
-						radius: "lg"
-					})
+				if (matchingIndex !== -1) {
+					if (!message.payload.error) {
+						setObserveMap((prev) => ({ ...prev, [ruleId]: false }))
+						setSyncingTargetIndex(null)
+						addToast({
+							title: t("autoSync"),
+							description: t("autoSyncSuccess"),
+							timeout: 3000,
+							color: "success",
+							radius: "lg"
+						})
+					} else {
+						// Observe sync failed — stop observing this target
+						setObserveMap((prev) => ({ ...prev, [ruleId]: false }))
+						setSyncingTargetIndex(null)
+						addToast({
+							title: t("tip"),
+							description: t("syncFailed"),
+							timeout: 3000,
+							color: "danger",
+							radius: "lg"
+						})
+					}
 				}
 			}
 		}
@@ -264,7 +323,7 @@ const Section: FC<SectionItem> = ({ id, source, targets, syncKeys, onChange, onD
 			className={`group relative rounded-2xl border p-4 transition-all duration-500 mb-4 overflow-hidden ${
 				showSuccessGlow
 					? "border-emerald-500/50 bg-emerald-500/10 shadow-[0_0_20px_rgba(16,185,129,0.2)]"
-					: "border-border bg-card hover:border-emerald-500/20 hover:bg-accent"
+					: "border-border bg-card hover:border-emerald-500/30"
 			}`}
 			initial={{ opacity: 0, y: 12 }}
 			animate={{ opacity: 1, y: 0 }}
@@ -293,7 +352,7 @@ const Section: FC<SectionItem> = ({ id, source, targets, syncKeys, onChange, onD
 					disabled={isObserving}
 					onChange={(e) => onChange(id, "source", e.target.value)}
 					placeholder={t("sourcePlaceholder")}
-					className="w-full bg-transparent border border-border rounded-lg px-3 py-2 text-[13px] text-foreground placeholder:text-muted-foreground focus:ring-0 font-mono truncate outline-none focus:border-emerald-500/30 transition-colors"
+					className="w-full bg-secondary/50 border border-border rounded-lg px-3 py-2 text-[13px] text-foreground placeholder:text-muted-foreground/60 focus:ring-0 font-mono truncate outline-none focus:border-emerald-500/40 transition-colors"
 				/>
 			</div>
 
@@ -338,7 +397,7 @@ const Section: FC<SectionItem> = ({ id, source, targets, syncKeys, onChange, onD
 										disabled={isTargetObserving}
 										onChange={(e) => handleTargetChange(targetIndex, e.target.value)}
 										placeholder={t("targetPlaceholder")}
-										className="flex-1 min-w-0 bg-transparent border border-border rounded-lg px-3 py-2 text-[13px] text-foreground placeholder:text-muted-foreground focus:ring-0 font-mono truncate outline-none focus:border-emerald-500/30 transition-colors"
+										className="flex-1 min-w-0 bg-secondary/50 border border-border rounded-lg px-3 py-2 text-[13px] text-foreground placeholder:text-muted-foreground/60 focus:ring-0 font-mono truncate outline-none focus:border-emerald-500/40 transition-colors disabled:opacity-60"
 									/>
 									<button
 										type="button"
@@ -387,7 +446,7 @@ const Section: FC<SectionItem> = ({ id, source, targets, syncKeys, onChange, onD
 								initial={{ opacity: 0, scale: 0.8 }}
 								animate={{ opacity: 1, scale: 1 }}
 								exit={{ opacity: 0, scale: 0.8 }}
-								className="inline-flex items-center gap-1.5 rounded-lg bg-secondary border border-border px-2.5 py-1 text-[11px] font-mono text-foreground group/chip hover:bg-accent hover:border-primary transition-colors"
+								className="inline-flex items-center gap-1.5 rounded-lg bg-secondary/60 border border-border/80 px-2.5 py-1 text-[11px] font-mono text-foreground group/chip hover:bg-accent hover:border-emerald-500/30 transition-colors"
 							>
 								{key}
 								{!isObserving && (
@@ -403,7 +462,7 @@ const Section: FC<SectionItem> = ({ id, source, targets, syncKeys, onChange, onD
 						))}
 					</AnimatePresence>
 					{!isObserving && (
-						<div className="flex items-center gap-1.5 h-[26.5px] bg-secondary rounded-lg px-2 border border-dashed border-border focus-within:border-emerald-500/30 transition-colors">
+						<div className="flex items-center gap-1.5 h-[26.5px] bg-secondary/50 rounded-lg px-2 border border-dashed border-border focus-within:border-emerald-500/40 transition-colors">
 							<input
 								type="text"
 								value={newKey}
