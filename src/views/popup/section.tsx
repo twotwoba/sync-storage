@@ -1,5 +1,4 @@
 import { addToast, Tooltip } from "@heroui/react"
-import { useLocalStorage } from "@uidotdev/usehooks"
 import { AnimatePresence, motion } from "framer-motion"
 import { type FC, useEffect, useRef, useState, useCallback } from "react"
 import {
@@ -32,10 +31,8 @@ const Section: FC<SectionItem> = ({ id, source, targets, syncKeys, onChange, onD
 	const [showSuccessGlow, setShowSuccessGlow] = useState(false)
 
 	// Observe states per target (keyed by ruleId which is `${id}_${targetIndex}`)
-	const [observeMap, setObserveMap] = useLocalStorage<Record<string, boolean>>(
-		`sync_storage_observe_${id}`,
-		{}
-	)
+	// State is synced from background on mount — no localStorage needed
+	const [observeMap, setObserveMap] = useState<Record<string, boolean>>({})
 
 	const isValidUrl = (url: string) => {
 		try {
@@ -53,8 +50,6 @@ const Section: FC<SectionItem> = ({ id, source, targets, syncKeys, onChange, onD
 	// Refs for accessing latest values in stable callbacks
 	const targetsRef = useRef(targets)
 	targetsRef.current = targets
-	const observeMapRef = useRef(observeMap)
-	observeMapRef.current = observeMap
 
 	const validateForTarget = useCallback((targetIndex: number) => {
 		const targetUrl = targets[targetIndex]
@@ -312,20 +307,8 @@ const Section: FC<SectionItem> = ({ id, source, targets, syncKeys, onChange, onD
 		return () => chrome.runtime.onMessage.removeListener(listener)
 	}, [id])
 
-	// Cleanup all observes on unmount — uses ref to avoid stale closure
-	useEffect(() => {
-		return () => {
-			const currentMap = observeMapRef.current
-			Object.entries(currentMap).forEach(([key, observing]) => {
-				if (observing) {
-					chrome.runtime.sendMessage({
-						type: "sync_observe_stop",
-						payload: { id: key }
-					})
-				}
-			})
-		}
-	}, [])
+	// Observes persist in the background independently of the popup lifecycle.
+	// Cleanup is handled explicitly when the user deletes a rule or removes a target.
 
 	return (
 		<motion.div
@@ -512,7 +495,6 @@ const Section: FC<SectionItem> = ({ id, source, targets, syncKeys, onChange, onD
 						disabled={isObserving}
 						onClick={() => {
 							onDelete(id)
-							localStorage.removeItem(`sync_storage_observe_${id}`)
 							// Stop all observes for all targets
 							targets.forEach((_, targetIndex) => {
 								const observeKey = getObserveKey(targetIndex)
