@@ -3,7 +3,6 @@ import tailwindcss from "@tailwindcss/vite"
 import react from "@vitejs/plugin-react-swc"
 import { defineConfig } from "vite"
 import zip from "vite-plugin-zip-pack"
-import tsconfigPaths from "vite-tsconfig-paths"
 import manifest from "./manifest.config.js"
 import { name, version } from "./package.json"
 
@@ -12,18 +11,20 @@ export default defineConfig(({ mode }) => {
 	const isProd = mode === "production"
 
 	return {
+		resolve: {
+			tsconfigPaths: true
+		},
 		plugins: [
-			tsconfigPaths({ loose: true }),
 			react(),
 			tailwindcss(),
 			crx({ manifest }),
 			zip({ outDir: "release", outFileName: `crx-${name}-${version}.zip` })
 		],
 		build: {
+			target: "es2020",
 			sourcemap: !isProd ? "inline" : false,
 			manifest: true,
-			minify: "esbuild",
-			rollupOptions: {
+			rolldownOptions: {
 				input: {
 					main: "index.html"
 				},
@@ -33,9 +34,6 @@ export default defineConfig(({ mode }) => {
 					assetFileNames: "[ext]/[name]-[hash].[ext]"
 				}
 			}
-		},
-		esbuild: {
-			target: "es2020"
 		},
 		server: {
 			cors: {
