@@ -1,7 +1,7 @@
 import { addToast, Tooltip } from "@heroui/react"
 import { useLocalStorage } from "@uidotdev/usehooks"
 import { AnimatePresence, motion } from "framer-motion"
-import { type FC, useEffect, useState, useCallback } from "react"
+import { type FC, useEffect, useRef, useState, useCallback } from "react"
 import {
 	CopyIcon,
 	KeyIcon,
@@ -49,6 +49,12 @@ const Section: FC<SectionItem> = ({ id, source, targets, syncKeys, onChange, onD
 	const getObserveKey = (targetIndex: number) => `${id}_${targetIndex}`
 
 	const isObserving = Object.values(observeMap).some(Boolean)
+
+	// Refs for accessing latest values in stable callbacks
+	const targetsRef = useRef(targets)
+	targetsRef.current = targets
+	const observeMapRef = useRef(observeMap)
+	observeMapRef.current = observeMap
 
 	const validateForTarget = useCallback((targetIndex: number) => {
 		const targetUrl = targets[targetIndex]
@@ -255,9 +261,9 @@ const Section: FC<SectionItem> = ({ id, source, targets, syncKeys, onChange, onD
 		)
 	}
 
+	// Check observe status on mount only
 	useEffect(() => {
-		// Check observe status for all targets on mount
-		targets.forEach((_, targetIndex) => {
+		targetsRef.current.forEach((_, targetIndex) => {
 			const observeKey = getObserveKey(targetIndex)
 			chrome.runtime.sendMessage(
 				{ type: "sync_check_observe_status", payload: { id: observeKey } },
@@ -268,11 +274,15 @@ const Section: FC<SectionItem> = ({ id, source, targets, syncKeys, onChange, onD
 				}
 			)
 		})
+	}, [id])
 
+	// Message listener — stable, uses refs for current values
+	useEffect(() => {
 		const listener = (message: any) => {
 			if (message.type === "observe_sync_complete" && message.payload?.ruleId) {
 				const ruleId = message.payload.ruleId
-				const matchingIndex = targets.findIndex((_, i) => getObserveKey(i) === ruleId)
+				const currentTargets = targetsRef.current
+				const matchingIndex = currentTargets.findIndex((_, i) => getObserveKey(i) === ruleId)
 				if (matchingIndex !== -1) {
 					if (!message.payload.error) {
 						setObserveMap((prev) => ({ ...prev, [ruleId]: false }))
@@ -285,7 +295,6 @@ const Section: FC<SectionItem> = ({ id, source, targets, syncKeys, onChange, onD
 							radius: "lg"
 						})
 					} else {
-						// Observe sync failed — stop observing this target
 						setObserveMap((prev) => ({ ...prev, [ruleId]: false }))
 						setSyncingTargetIndex(null)
 						addToast({
@@ -301,12 +310,13 @@ const Section: FC<SectionItem> = ({ id, source, targets, syncKeys, onChange, onD
 		}
 		chrome.runtime.onMessage.addListener(listener)
 		return () => chrome.runtime.onMessage.removeListener(listener)
-	}, [id, targets, t, setObserveMap])
+	}, [id])
 
-	// Cleanup all observes when section is deleted
+	// Cleanup all observes on unmount — uses ref to avoid stale closure
 	useEffect(() => {
 		return () => {
-			Object.entries(observeMap).forEach(([key, observing]) => {
+			const currentMap = observeMapRef.current
+			Object.entries(currentMap).forEach(([key, observing]) => {
 				if (observing) {
 					chrome.runtime.sendMessage({
 						type: "sync_observe_stop",
@@ -315,7 +325,6 @@ const Section: FC<SectionItem> = ({ id, source, targets, syncKeys, onChange, onD
 				}
 			})
 		}
-	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [])
 
 	return (
